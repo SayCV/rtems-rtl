@@ -1,0 +1,310 @@
+RTEMS Runtime Link Editor (RTL)
+===============================
+Chris Johns <chrisj@rtems.org>
+1.0, Decemeber 2011
+:doctype: book
+:toc:
+:icons:   
+:numbered:
+
+image:images/rtemswhitebg.jpg["RTEMS",width="40%"]
+
+Background
+----------
+
+This project adds support for the 'dlopen', 'dlclose' and 'dlsym' calls as
+defined in the POSIX and related standards to the RTEMS operating system.
+
+This test harness contains a new runtime linker as well as the Android and
+NetBSD RTLD code. This support will go away so check earlier snapshots to find
+that support. Neither the Android or NetBSD code is being directly used in this
+project and only serves as a reference.
+
+The project built and tested the NetBSD code to look into using dynamic ELF
+object files as a means of runtime loading code into RTEMS. Dynamic object
+files are used by ELF based operating systems to share libraries and support
+this function well. This model of dynamic loading does not map to RTEMS with
+the same benefits. Simply put, RTEMS is not a multi-process environment nor
+does it use memory protection or partitioned memory systems to create a virtual
+process environment and this is where the benefits of using dynamic object
+file's appear. Shared libraries allow code to be shared amongst a number of
+processes operating in different virtual address spaces and while these
+processes may share code they are kept separate for security reasons. Dynamic
+ELF files provide the following characteristics to support sharing:
+
+. Procedure Lookup Tables (PLT)
+. Global Offset Tables (GOT)
+. Position Independent Code (PIC)
+. Whole file memory footprint
+
+The PLT and GOT tables along with PIC code provide a small contained way to
+locate a dynamic object file without the dynamic object file requiring
+relocation fixups all through itself. This is important on shared library
+system as it avoids the need for each process having a private copy of the
+shared library code which defeats the purpose of sharing increasing the memory
+usage across the system. On a shared library system the whole object file is
+mapped into the process's address space and demand loading manages the physical
+memory used by the process. If a process modifies a part of the shared library
+the 'copy on write' or COW features of the operating system takes a copy of
+that page of memory and makes it private to that process. With a shared library
+made up of dynamic object files This happens when the process writes to a data
+variable that is part of the shared library or the code is modified. To
+minimise possible changes execution within the shared library is realtive using
+position independent code (PIC) and calls externally are made using the PLT
+tables which are altered to match the shared code's address mapping. The PTL
+tables are small relative to the size of a shared library.
+
+The downside of this design is the performance overhead the indirect procedure
+and data references incur plus the need to load the whole object file image
+into memory. On a multi-process system with virtual memory demand paging these
+negatives are minor compared to the positives, how-ever on RTEMS, a single
+process system without virtual memory there are no positives only negatives.
+
+The NetBSD code was used to attempt to get relocatable code into a dynamic ELF
+file. The tools for RTEMS would not do this. Relocatable code can be found in
+relocatable type ELF file. The NetBSD loader checks for any ELF file that is
+not dynamic returning an error. This means this code base could not be used
+without major changes. The NetBSD code does support a large number of
+architectures and has relocation support.
+
+The Android code also only supports dynamic modules and its code base only
+supports a few targets and this support is not as cleanly implemented as
+NetBSD.
+
+<<<<
+RTEMS Runtime Link Editor
+-------------------------
+
+The RTL code contained in this project is new code developed for RTEMS using
+the features of RTEMS to give a small tight implementation. It supports the
+loading of relocatable object files, invoking of contructor and destructor
+functions, global symbol relocation and loading directly from archive format
+files. The header files provide documentation about the functions provided and
+the main.c file shows the command added to support development.
+
+The target code is supported by a host RTEMS specific linker called
+'rtems-ld'. The RTEMS linker is contained in a separate package.
+
+Build System
+~~~~~~~~~~~~
+
+The package uses the waf build system. You can find waf here:
+
+  http://waf.googlecode.com/
+
+Waf is a fast full featured build environment that removes the need for make,
+make files or any other traditional build system infrastructure. For details
+please refer to the WAF-README file. It can be used to build any RTEMS project.
+
+Follow the download instructions for waf and install into your path. If you are
+on Windows you will need to download a recent 2.7 or later version of Python
+and add to the global path.
+
+Testing
+-------
+
+The development is using the HEAD branch of RTEMS and the BSP is the Sparc
+Instruction Simulator. Other architectures are support and if you have tools
+and BSPs installed. The build scripts will attempt to detect them and build for
+them. If there is no support for a specific architecture just copy the empty
+NIOS2 file to the missing architecture.
+
+To build:
+
+. Get the latest tools.
+. Check out RTEMS from CVS and run a bootstrap.
+. Build using:
++
+-------------------------------------------------------------
+$RTEMS_SRC/configure --target=sparc-rtems4.11 \ <1>
+                     --prefix=$RTEMS_TEST_PREFIX/build/4.11 \ <2>
+                     --enable-rtemsbsp=sis \
+                     --enable-tests=samples \
+                     --enable-cxx \
+                     --enable-maintainer-mode \
+                     --enable-rtems-debug
+-------------------------------------------------------------
+
+<1> $RTEMS_SRC is the path to the RTEMS source code.
+<2> $RTEMS_TEST_PREFIX is the path you install your test RTEMS builds.
+
+. Configure this package change directory to the source code and then:
++
+-------------------------------------------------------------
+waf configure --rtems=/opt/work/rtems/build/4.11 \
+              --rtems-tools=/opt/work/rtems/4.11,/opt/work/rtems/nios/nios2-rtems-11.0
+-------------------------------------------------------------
++
+You can also use:
++
+-------------------------------------------------------------
+waf --help 
+-------------------------------------------------------------
++
+to get a list of options. The RTEMS specific ones are:
++
+--rtems=RTEMS_PATH:: Path to an installed RTEMS BSPs.
++
+--rtems-tools=RTEMS_TOOLS:: Path to RTEMS tools. This options avoids the need
+to have the tools in your shell path.
++
+--rtems-version=RTEMS_VERSION:: RTEMS version (default 4.11). This is only
+needed if you are not using the default.
++
+--rtems-archs=RTEMS_ARCHS:: List of RTEMS architectures to build. By default
+all architectures detected when configuring are built.
++
+--rtems-bsps=RTEMS_BSPS:: List of BSPs to build. This lets you specify a
+specific set of BSPs to build for. By default all BSPs are built.
++
+--show-commands:: Print the commands as strings. This will display the full
+command used. This can help when debugging tool related issues.
+
+. Build the RTL test application do:
++
+-------------------------------------------------------------
+waf
+-------------------------------------------------------------
+
+. Run in the GDB SIS simulator:
++
+-------------------------------------------------------------
+sparc-rtems4.11-run build/sparc-rtems4.11-sis/rtld
+-------------------------------------------------------------
+
+RTEMS Linker
+------------
+
+The loading of relocatable object files allows the memory map to be determined
+at run time giving us the maximum flexibility because the user does not need to
+manage the memory. This approach how-ever requires loading be managed at the
+object file level and this means there will be unresolved symbols and these
+symbols can be from any library referenced by the project.
+
+The target link editor can resolve these symbols as it loads object files if
+given a list of object files. A linker typically generates this list by loading
+the symbol tables of the referenced librarys and then selecting the object
+files referenced. The target does not have access to the librarys nor does it
+typically have the memory and performance needed to manage large symbol tables.
+
+To resolve this an RTEMS linker has been developed. This is a C++ host only
+program that can read and access the ELF files, load the symbols tables and
+resolve the external symbols. It has a typical linker command line and outputs
+a list of dependent object files or an archive file containting all referenced
+object files. You can provide the linker with the base image and only the
+object files not present are included. The base image is the static RTEMS image
+you boot on your target hardware.
+
+This approach over comes the "library dependence" problem present in embedded
+systems that use cross-compilation and standards linkers. If you have a
+statically linked base image containing code from a library and you wish to
+create a run time loadable image, either statically or incrementally linked
+using code from the same library you do not know if code from the library is
+present or not. If you feed the linker the base image's symbols and library the
+linker will generate errors for duplicant symbols in the base image from the
+same library. If you do not provide the library the linker will generate
+unresolved symbol errors. We need a special linker that can handle this and
+understand the role of the base image and the libraries present.
+
+Run Loadable Models
+~~~~~~~~~~~~~~~~~~~
+
+There are a number of possible application models users may wish to use. A
+project may decide to vary the model used depending on the phase the project is
+in.
+
+Script::
+
+Load the application from the object files in the application and the
+libraries.  The target needs to have access to all libraries and this typically
+means networked file system (NFS) access to the development host containing the
+libraries being used. With a suitable initialisation mounting the network disk
+and libraries paths being set an application can be loaded using a script of
+files. The approach gives the developer flexiblity to update and play with
+various parts of the code as they go.
+
+Single Image::
+
+The RTEMS linker creates a single image of the application by pulling in the
+object files from the libraries used by the application. The linker can be
+given the base image and will link against the symbols it contains. This means
+the base image and an application can use the same library and the application
+will only contain the code from the library it needs. If at the point of
+loading the object file has been loaded from another application the one
+included in this application will not be loaded.
+
+For those users who need a determinisitic layout the loader should load the
+same object files in the same place each time. This is deterministic.
+
+Status
+------
+
+The current status is loading is:
+
+. Loading of an object file as a file or within a archive works on the Sparc,
+i386 and m68k architectures. Other architectures are present how-ever testing
+may be limited. The NIOS file is an empty template to allow the package to
+build.
+
+. Shell commands +dlopen+ ('dlo'), +dlclose+ ('dlc'), +dlsearch+ ('dls'), and
+execute (+dlx+) provide a way to test the loader.
+
+. Shell access to the loader is provided via the 'rtl' command. The command
+provdes:
++
+. status:: The status of the loader.
++
+. list:: List of loaded object modules.
++
+. sym:: Symbol table access.
++
+. obj:: Object file details.
+
+. The RTEMS linker and loader need a simple way to have a single application
+archive loaded and run. This could be a script in a special section of the
+archive, an elf file or something else.
+
+Development Tasks
+~~~~~~~~~~~~~~~~~
+
+. Add the ability to hold unresolved externals an object module may have once
+loaded. We need the ability to load object modules with unresolved externals
+because object modules may depend on eac other. 
+
+This is complex issue due to the memory management issues it creates. Holding
+the unresolved externals and then releasing them later will fragment the
+heap. The proper solution is to add a memory manager and allocator to the
+loader. This would be used for all symbol allocations.
+
+The other solution is to not allow loading of object modules with unresolved
+symbols and to force application that have them to incrementally link. The
+issue is here is 3rd party libraries and that makes this solution less than
+ideal.
+
+. Add an application loader. An application needs to be formally
+defined. Currently the RTEMS linker creates a standard library archive. A
+application format needs some extra information. This could be as simple as
+something that indicates this is an RTEMS application, through to the entry
+point and a load order for the object modules in the archive to avoid
+unresolved externals.
+
+. Place the code into the RTEMS source tree.
+
+Development Cut-n-Pastes for Chris
+----------------------------------
+
+Note: the '--' is required to abort getopt processing in sis-gdb
+
+-------------------------------------------------------------
+waf configure --rtems=/Users/chris/Development/rtems/build/4.11 \
+--rtems-tools=/Users/chris/Development/rtems/4.11,/Users/chris/Development/rtems/nios/gnu/nios2-rtems-11.0
+~/Development/rtems/build/testing/sim-scripts/sis-gdb -- \
+--annotate=3 /Users/chris/Development/rtems/build/rtl/sparc/rtld
+-------------------------------------------------------------
+
+-------------------------------------------------------------
+sparc-rtems4.11-readelf -all x-long-name-to-create-gnu-extension-in-archive.o | less
+~/Development/rtems/build/testing/sim-scripts/sis -l 10 \
+$(find sparc-rtems4.11/c/sis/testsuites/psxtests -name \*.exe) > results-no-oe-align
+/Users/chris/Development/rtems/build/newlib/newlib-1.18.0/newlib/libc
+-------------------------------------------------------------

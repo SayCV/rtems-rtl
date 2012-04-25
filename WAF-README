@@ -1,0 +1,42 @@
+RTEMS Waf Build Module.
+
+                                                    Chris Johns <chrisj@rtems.org>
+
+Background
+
+Waf is a build tool that manages all aspects of building software. You can find
+waf here:
+
+  http://waf.googlecode.com/
+
+I suggest you read the Waf Book to find about waf and what it does. It is fast,
+easy to program and additive. It uses Python as the scripting language so the
+build scripts require a Python syntax. It also allows you to use the power of
+Python and its full programming language to implement a build system with the
+same approach you design the software you embed on RTEMS. Just because it is a
+build system does not mean you are limited to using design techniques, tools
+and scripting formats from 30 years ago.
+
+RTEMS Module
+
+The rtems.py and pkgconfig.py provide the support you need. Place these files
+in the top of your source tree where you will add your wscript file. You need
+to add a wscript. This example is for a simple hello world program (source not
+provided):
+
+ import rtems
+
+ def init(ctx):
+     rtems.init(ctx)
+
+ def options(opt):
+     rtems.options(opt)
+
+ def configure(conf):
+     rtems.configure(conf)
+
+ def build(bld):
+     rtems.build(bld)
+     bld.program(target = 'hello-world',
+                 features = 'cprogram',
+                 source = 'main.c')

@@ -1,0 +1,12 @@
+define rrb
+ set $pc=bsp_reset
+ c
+end
+#set remotebaud 115200
+#target remote /dev/ttyUSB0
+target remote :1234
+b rtems_fatal_error_occurred
+#source /opt/work/sw/rtems/src/rtems-gdb-macros
+#finish
+#finish
+#next

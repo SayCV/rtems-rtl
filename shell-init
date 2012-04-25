@@ -1,0 +1,3 @@
+#rtl-trace set all
+#rtl-trace set load load-sect reloc
+#dlo libx.a:x-long-name-to-create-gnu-extension-in-archive.o
