@@ -80,7 +80,7 @@ def mmap_source(bld, includes):
 
 def rtl_root_fs(bld):
     bld(target = 'fs-root.tar',
-        source = ['shell-init', 'libx.a', 'a.out'],
+        source = ['shell-init', 'libx.a'],
         rule = 'tar cf - ${SRC} > ${TGT}')
     bld.objects(name = 'rootfs',
                 target = 'fs-root-tarfile.o',
