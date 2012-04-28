@@ -340,7 +340,7 @@ rtems_rtl_obj_find_file (rtems_rtl_obj_t* obj, const char* name)
   else
     n = obj->oname;
   
-  if (rtems_filesystem_is_separator (n[0]))
+  if (rtems_filesystem_is_delimiter (n[0]))
   {
     if (stat (n, &sb) == 0)
       obj->fname = n;
