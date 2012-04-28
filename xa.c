@@ -2,6 +2,8 @@
 
 #include "x.h"
 
+void hello(void);
+
 void
 hello (void)
 {

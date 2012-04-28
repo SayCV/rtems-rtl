@@ -1,5 +1,5 @@
 /*
- *  COPYRIGHT (c) 2010 Chris Johns <chrisj@rtems.org>
+ *  COPYRIGHT (c) 2012 Chris Johns <chrisj@rtems.org>
  *
  *  The license and distribution terms for this file may be
  *  found in the file LICENSE in this distribution or at
@@ -27,6 +27,7 @@
 #include <string.h>
 
 #include <dlfcn.h>
+#include <dlfcn-shell.h>
 
 static void*
 convert_ascii_to_voidp (const char* arg)

@@ -1,5 +1,5 @@
 /*
- *  COPYRIGHT (c) 2010 Chris Johns <chrisj@rtems.org>
+ *  COPYRIGHT (c) 2012 Chris Johns <chrisj@rtems.org>
  *
  *  The license and distribution terms for this file may be
  *  found in the file LICENSE in this distribution or at
@@ -29,6 +29,7 @@
 #endif
 
 #include <link.h>
+#include <rtl.h>
 
 struct r_debug  _rtld_debug;
 

@@ -52,6 +52,8 @@ int remote_debug;
 #include <rtl-shell.h>
 #include <rtl-trace.h>
 
+#include <dlfcn-shell.h>
+
 /*
  *  The tarfile is built automatically externally so we need to account
  *  for the leading symbol on the names.
@@ -200,7 +202,7 @@ rtems_driver_address_table rtems_idedisk_io_ops = {
 /**
  * Start the RTEMS Shell.
  */
-void
+static void
 shell_start (void)
 {
   rtems_status_code sc;
@@ -213,7 +215,7 @@ shell_start (void)
 /**
  * Run the /shell-init script.
  */
-void
+static void
 shell_init_script (void)
 {
   rtems_status_code sc;
@@ -224,7 +226,7 @@ shell_init_script (void)
     printf ("error: running shell script: %s (%d)\n", rtems_status_text (sc), sc);
 }
 
-int
+static int
 setup_ramdisk (void)
 {
   rtems_device_major_number major;
@@ -249,7 +251,7 @@ setup_ramdisk (void)
   return 0;
 }
 
-int
+static int
 setup_flashdisk (void)
 {
 #if RTEMS_APP_FLASHDISK
@@ -279,7 +281,7 @@ setup_flashdisk (void)
 extern rtems_status_code rtems_ide_part_table_initialize (const char* );
 #endif
 
-int
+static int
 setup_idedisk (const char* path)
 {
 #if RTEMS_APP_IDEDISK
@@ -300,7 +302,7 @@ setup_idedisk (const char* path)
   return 0;
 }
 
-int
+static int
 setup_rootfs (void)
 {
   rtems_status_code sc;
@@ -320,7 +322,7 @@ setup_rootfs (void)
   return 0;
 }
 
-int
+static int
 shell_flash_erase (int argc, char* argv[])
 {
 #if RTEMS_APP_FLASHDISK
@@ -368,11 +370,6 @@ shell_flash_erase (int argc, char* argv[])
 #endif
   return 0;
 }
-
-int shell_dlopen (int argc, char* argv[]);
-int shell_dlclose (int argc, char* argv[]);
-int shell_dlsym (int argc, char* argv[]);
-int shell_dlcall (int argc, char* argv[]);
 
 int
 main (int argc, char* argv[])

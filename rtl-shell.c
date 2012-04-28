@@ -36,6 +36,7 @@
 
 #include <rtl.h>
 #include <rtl-chain-iterator.h>
+#include <rtl-shell.h>
 #include <rtl-trace.h>
 
 /**
@@ -233,7 +234,7 @@ rtems_rtl_shell_object (rtems_rtl_data_t* rtl, int argc, char *argv[])
   return 0;
 }
 
-void
+static void
 rtems_rtl_shell_usage (const char* arg)
 {
   printf ("%s: Runtime Linker\n", arg);

@@ -8,8 +8,11 @@
 static int zero;
 unsigned int public = 0x12345678;
 
+void w_writeln(double d);
 void x_writeln(const char* s);
 void y_writeln(const char* s) __attribute__ ((section (".bar")));
+int z_writeln(int argc, const char* argv[]);
+int my_main (int argc, char* argv[]);
 
 void
 w_writeln(double d)
@@ -23,12 +26,14 @@ x_writeln(const char* s)
   printf ("%s\n", s);
 }
 
-void y_writeln(const char* s)
+void
+y_writeln(const char* s)
 {
   x_writeln (s);
 }
 
-int z_writeln(int argc, const char* argv[])
+int
+z_writeln(int argc, const char* argv[])
 {
   int arg;
   printf ("public = 0x%08x, zero = %d\n", public, ++zero);
