@@ -368,6 +368,7 @@ def _load_flags(conf, arch_bsp, path):
 def _load_flags_set(flags, arch_bsp, conf, config, pkg):
     conf.to_log('%s ->' % flags)
     if pkg is not None:
+        flagstr = ''
         try:
             flagstr = pkg.get(flags)
         except pkgconfig.error as e:
