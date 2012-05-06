@@ -821,7 +821,7 @@ rtems_rtl_obj_archive_find (rtems_rtl_obj_t* obj, int fd)
   while (obj->ooffset < fsize)
   {
     /*
-     * Clean up any existing data so 
+     * Clean up any existing data.
      */
     memset (header, 0, sizeof (header));
     
