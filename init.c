@@ -1,7 +1,3 @@
-/*
- * $Id$
- */
-
 /**
  * Configure the RTEMS initialisation.
  */

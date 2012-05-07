@@ -1,7 +1,7 @@
 #
 # RTEMS support for applications.
 #
-# Copyright Chris Johns (chrisj@rtems.org)
+# Copyright 2012 Chris Johns (chrisj@rtems.org)
 #
 import os
 import os.path

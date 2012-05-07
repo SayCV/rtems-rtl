@@ -1,9 +1,7 @@
 /*
- *  $Id$
- *
  * RTEMS Project (http://www.rtems.org/)
  *
- * Copyright 2010 Chris Johns (chrisj@rtems.org)
+ * Copyright 2012 Chris Johns (chrisj@rtems.org)
  */
 
 /**

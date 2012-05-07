@@ -1,7 +1,5 @@
 /*
  * Taken from NetBSD and stripped of the relocations not needed on RTEMS.
- *
- *  $Id$
  */
 
 /*	$NetBSD: mdreloc.c,v 1.26 2010/01/14 11:58:32 skrll Exp $	*/

@@ -1,11 +1,9 @@
 #
-#  COPYRIGHT (c) 2010 Chris Johns <chrisj@rtems.org>
+#  COPYRIGHT (c) 2012 Chris Johns <chrisj@rtems.org>
 #
 #  The license and distribution terms for this file may be
 #  found in the file LICENSE in this distribution or at
 #  http://www.rtems.com/license/LICENSE.
-#
-#  $Id$
 #
 # Covert the list of symbols into a C structure.
 #
