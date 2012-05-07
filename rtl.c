@@ -26,6 +26,7 @@
 #include <rtems/libio_.h>
 
 #include <rtl.h>
+#include "rtl-alloc-heap.h"
 #include "rtl-error.h"
 #include "rtl-trace.h"
 
@@ -34,7 +35,7 @@
  */
 #define RTEMS_MUTEX_ATTRIBS \
   (RTEMS_PRIORITY | RTEMS_BINARY_SEMAPHORE | \
-   RTEMS_NO_INHERIT_PRIORITY | RTEMS_NO_PRIORITY_CEILING | RTEMS_LOCAL)
+   RTEMS_INHERIT_PRIORITY | RTEMS_NO_PRIORITY_CEILING | RTEMS_LOCAL) 
 
 /**
  * Symbol table cache size. They can be big so the cache needs space to work.
@@ -85,7 +86,11 @@ rtems_rtl_data_init (void)
     if (!rtl)
     {
       rtems_status_code sc;
-      
+      rtems_id          lock;
+
+      /*
+       * Always in the heap.
+       */
       rtl = malloc (sizeof (rtems_rtl_data_t));
       if (!rtl)
       {
@@ -95,26 +100,42 @@ rtems_rtl_data_init (void)
 
       *rtl = (rtems_rtl_data_t) { 0 };
 
-      rtems_chain_initialize_empty (&rtl->objects);
+      /*
+       * The default allocator uses the libc heap.
+       */
+      rtl->allocator = rtems_rtl_alloc_heap;
 
-      rtl->base = rtems_rtl_obj_alloc ();
-      if (!rtl->base)
+      /*
+       * Create the RTL lock.
+       */
+      sc = rtems_semaphore_create (rtems_build_name ('R', 'T', 'L', 'D'),
+                                   1, RTEMS_MUTEX_ATTRIBS,
+                                   RTEMS_NO_PRIORITY, &lock);
+      if (sc != RTEMS_SUCCESSFUL)
       {
         free (rtl);
         return false;
       }
 
-      /*
-       * Need to malloc the memory so the free does not complain.
-       */
-      rtl->base->oname = strdup ("rtems-kernel");
-
-      rtems_chain_append (&rtl->objects, &rtl->base->link);
+      sc = rtems_semaphore_obtain (lock, RTEMS_WAIT, RTEMS_NO_TIMEOUT);
+      if (sc != RTEMS_SUCCESSFUL)
+      {
+        rtems_semaphore_delete (lock);
+        free (rtl);
+        return false;
+      }
       
+      rtl->lock = lock;
+      
+      /*
+       * Initialise the objects list and create any required services.
+       */
+      rtems_chain_initialize_empty (&rtl->objects);
+
       if (!rtems_rtl_symbol_table_open (&rtl->globals,
                                         RTEMS_RTL_SYMS_GLOBAL_BUCKETS))
       {
-        rtems_rtl_obj_free (rtl->base);
+        rtems_semaphore_delete (lock);
         free (rtl);
         return false;
       }
@@ -123,7 +144,7 @@ rtems_rtl_data_init (void)
                                      RTEMS_RTL_ELF_SYMBOL_CACHE))
       {
         rtems_rtl_symbol_table_close (&rtl->globals);
-        rtems_rtl_obj_free (rtl->base);
+        rtems_semaphore_delete (lock);
         free (rtl);
         return false;
       }
@@ -133,7 +154,7 @@ rtems_rtl_data_init (void)
       {
         rtems_rtl_obj_cache_close (&rtl->symbols);
         rtems_rtl_symbol_table_close (&rtl->globals);
-        rtems_rtl_obj_free (rtl->base);
+        rtems_semaphore_delete (lock);
         free (rtl);
         return false;
       }
@@ -144,24 +165,29 @@ rtems_rtl_data_init (void)
         rtems_rtl_obj_cache_close (&rtl->strings);
         rtems_rtl_obj_cache_close (&rtl->symbols);
         rtems_rtl_symbol_table_close (&rtl->globals);
-        rtems_rtl_obj_free (rtl->base);
+        rtems_semaphore_delete (lock);
         free (rtl);
         return false;
       }
       
-      sc = rtems_semaphore_create(rtems_build_name ('R', 'T', 'L', 'D'),
-                                  1, RTEMS_MUTEX_ATTRIBS,
-                                  RTEMS_NO_PRIORITY, &rtl->lock);
-      if (sc != RTEMS_SUCCESSFUL)
+      rtl->base = rtems_rtl_obj_alloc ();
+      if (!rtl->base)
       {
         rtems_rtl_obj_cache_close (&rtl->relocs);
         rtems_rtl_obj_cache_close (&rtl->strings);
         rtems_rtl_obj_cache_close (&rtl->symbols);
         rtems_rtl_symbol_table_close (&rtl->globals);
-        rtems_rtl_obj_free (rtl->base);
+        rtems_semaphore_delete (lock);
         free (rtl);
         return false;
       }
+
+      /*
+       * Need to malloc the memory so the free does not complain.
+       */
+      rtl->base->oname = strdup ("rtems-kernel");
+
+      rtems_chain_append (&rtl->objects, &rtl->base->link);
     }
     
     rtems_libio_unlock ();
@@ -169,6 +195,8 @@ rtems_rtl_data_init (void)
     rtems_rtl_path_append (".");
 
     rtems_rtl_base_global_syms_init ();
+
+    rtems_rtl_unlock ();
   }
   return true;
 }
@@ -424,7 +452,7 @@ rtems_rtl_path_update (bool prepend, const char* path)
   else
     prepend = true;
   
-  paths = malloc (len + 1);
+  paths = rtems_rtl_alloc_new (RTEMS_RTL_ALLOC_STRING, len + 1);
   
   if (!paths)
   {

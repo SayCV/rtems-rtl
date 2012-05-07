@@ -53,6 +53,8 @@ def rtl_source(bld, arch):
         source = ['dlfcn.c',
                   'dlfcn-shell.c',
                   'rtl.c',
+                  'rtl-alloc-heap.c',
+                  'rtl-allocator.c',
                   'rtl-chain-iterator.c',
                   'rtl-debugger.c',
                   'rtl-elf.c',
@@ -60,6 +62,7 @@ def rtl_source(bld, arch):
                   'rtl-obj.c',
                   'rtl-obj-cache.c',
                   'rtl-shell.c',
+                  'rtl-string.c',
                   'rtl-sym.c',
                   'rtl-trace.c',
                   'rtl-mdreloc-' + arch + '.c'])

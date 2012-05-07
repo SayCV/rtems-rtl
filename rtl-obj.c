@@ -30,12 +30,14 @@
 #include <rtl-chain-iterator.h>
 #include <rtl-obj.h>
 #include "rtl-error.h"
+#include "rtl-string.h"
 #include "rtl-trace.h"
 
 rtems_rtl_obj_t*
 rtems_rtl_obj_alloc (void)
 {
-  rtems_rtl_obj_t* obj = malloc (sizeof (rtems_rtl_obj_t));
+  rtems_rtl_obj_t* obj = rtems_rtl_alloc_new (RTEMS_RTL_ALLOC_OBJECT,
+                                              sizeof (rtems_rtl_obj_t));
   if (obj)
   {
     /*
@@ -54,10 +56,10 @@ rtems_rtl_obj_alloc (void)
 static void
 rtems_rtl_obj_free_names (rtems_rtl_obj_t* obj)
 {
-  free ((void*) obj->oname);
-  free ((void*) obj->aname);
+  rtems_rtl_alloc_del (RTEMS_RTL_ALLOC_STRING, (void*) obj->oname);
+  rtems_rtl_alloc_del (RTEMS_RTL_ALLOC_STRING, (void*) obj->aname);
   if ((obj->fname != obj->aname) && (obj->fname != obj->oname))
-    free ((void*) obj->fname);
+    rtems_rtl_alloc_del (RTEMS_RTL_ALLOC_STRING, (void*) obj->fname);
 }
 
 bool
@@ -71,10 +73,9 @@ rtems_rtl_obj_free (rtems_rtl_obj_t* obj)
   if (!rtems_chain_is_node_off_chain (&obj->link))
     rtems_chain_extract (&obj->link);
   rtems_rtl_obj_symbol_erase (obj);
-  if (obj->text_base)
-    free (obj->text_base);
+  rtems_rtl_alloc_del (RTEMS_RTL_ALLOC_MODULE, obj->text_base);
   rtems_rtl_obj_free_names (obj);
-  free (obj);
+  rtems_rtl_alloc_del (RTEMS_RTL_ALLOC_OBJECT, obj);
   return true;
 }
 
@@ -105,7 +106,7 @@ rtems_rtl_obj_parse_name (rtems_rtl_obj_t* obj, const char* name)
 
   aname = NULL;
   
-  oname = malloc (p - name + 1);
+  oname = rtems_rtl_alloc_new (RTEMS_RTL_ALLOC_STRING, p - name + 1);
   if (oname == NULL)
   {
     rtems_rtl_set_error (ENOMEM, "no memory for object file name");
@@ -135,10 +136,10 @@ rtems_rtl_obj_parse_name (rtems_rtl_obj_t* obj, const char* name)
     if (o == NULL)
       o = e;
     
-    oname = malloc (o - p + 1);
+    oname = rtems_rtl_alloc_new (RTEMS_RTL_ALLOC_STRING, o - p + 1);
     if (oname == NULL)
     {
-      free (aname);
+      rtems_rtl_alloc_del (RTEMS_RTL_ALLOC_STRING, aname);
       rtems_rtl_set_error (ENOMEM, "no memory for object file name");
       return false;
     }
@@ -368,7 +369,7 @@ rtems_rtl_obj_find_file (rtems_rtl_obj_t* obj, const char* name)
       /*
        * Allocate the path fragment, separator, name, terminating nul.
        */
-      p = malloc ((d - s) + 1 + l + 1);
+      p = rtems_rtl_alloc_new (RTEMS_RTL_ALLOC_STRING, (d - s) + 1 + l + 1);
       if (p == NULL)
       {
         rtems_rtl_set_error (ENOMEM, "no memory searching for object file");
@@ -382,7 +383,7 @@ rtems_rtl_obj_find_file (rtems_rtl_obj_t* obj, const char* name)
       p[(d - s) + 1 + l] = '\0';
 
       if (stat (p, &sb) < 0)
-        free (p);
+        rtems_rtl_alloc_del (RTEMS_RTL_ALLOC_STRING, p);
       else
       {
         /*
@@ -416,14 +417,15 @@ rtems_rtl_obj_add_section (rtems_rtl_obj_t* obj,
                            int              info,
                            uint32_t         flags)
 {
-  rtems_rtl_obj_sect_t* sect = malloc (sizeof (rtems_rtl_obj_sect_t));
+  rtems_rtl_obj_sect_t* sect = rtems_rtl_alloc_new (RTEMS_RTL_ALLOC_OBJECT,
+                                                    sizeof (rtems_rtl_obj_sect_t));
   if (!sect)
   {
     rtems_rtl_set_error (ENOMEM, "adding allocated section");
     return false;
   }
   sect->section = section;
-  sect->name = strdup (name);
+  sect->name = rtems_rtl_strdup (name);
   sect->size = size;
   sect->offset = offset;
   sect->alignment = alignment;
@@ -448,8 +450,8 @@ rtems_rtl_obj_erase_sections (rtems_rtl_obj_t* obj)
     rtems_rtl_obj_sect_t* sect = (rtems_rtl_obj_sect_t*) node;
     rtems_chain_node*     next_node = rtems_chain_next (node);
     rtems_chain_extract (node);
-    free ((void*) sect->name);
-    free (node);
+    rtems_rtl_alloc_del (RTEMS_RTL_ALLOC_STRING, (void*) sect->name);
+    rtems_rtl_alloc_del (RTEMS_RTL_ALLOC_OBJECT, node);
     node = next_node;
   }
 }
@@ -670,7 +672,7 @@ rtems_rtl_obj_load_sections (rtems_rtl_obj_t* obj, int fd)
    * so the heap does not become fragmented.
    */
   obj->exec_size = text_size + const_size + data_size + bss_size;
-  obj->text_base = malloc (obj->exec_size);
+  obj->text_base = rtems_rtl_alloc_new (RTEMS_RTL_ALLOC_OBJECT, obj->exec_size);
   if (!obj->text_base)
   {
     obj->exec_size = 0;
@@ -707,7 +709,7 @@ rtems_rtl_obj_load_sections (rtems_rtl_obj_t* obj, int fd)
       !rtems_rtl_obj_sections_loader (&obj->sections, RTEMS_RTL_OBJ_SECT_BSS,
                                       fd, obj->ooffset, obj->bss_base))
   {
-    free (obj->text_base);
+    rtems_rtl_alloc_del (RTEMS_RTL_ALLOC_MODULE, obj->text_base);
     obj->exec_size = 0;
     obj->text_base = 0;
     obj->data_base = 0;

@@ -22,6 +22,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <rtl-allocator.h>
 #include <rtl-obj-cache.h>
 #include <rtl-error.h>
 
@@ -32,7 +33,7 @@ rtems_rtl_obj_cache_open (rtems_rtl_obj_cache_t* cache, size_t size)
   cache->offset = 0;
   cache->size   = size;
   cache->level  = 0;
-  cache->buffer = malloc (size);
+  cache->buffer = rtems_rtl_alloc_new (RTEMS_RTL_ALLOC_OBJECT, size);
   if (!cache->buffer)
   {
     rtems_rtl_set_error (ENOMEM, "no memory for cache buffer");
@@ -44,7 +45,7 @@ rtems_rtl_obj_cache_open (rtems_rtl_obj_cache_t* cache, size_t size)
 void
 rtems_rtl_obj_cache_close (rtems_rtl_obj_cache_t* cache)
 {
-  free (cache->buffer);
+  rtems_rtl_alloc_del (RTEMS_RTL_ALLOC_OBJECT, cache->buffer);
   cache->fd    = -1;
   cache->level = 0;
 }

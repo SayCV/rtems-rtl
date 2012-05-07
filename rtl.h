@@ -23,6 +23,8 @@
 #include <rtems/chain.h>
 
 // #include <rtems/rtl/rtl-elf.h>
+
+#include <rtl-allocator.h>
 #include <rtl-fwd.h>
 #include <rtl-elf.h>
 #include <rtl-obj.h>
@@ -79,6 +81,7 @@ typedef void (*rtems_rtl_cdtor_t)(void);
 struct rtems_rtl_data_s
 {
   rtems_id              lock;           /**< The RTL lock id */
+  rtems_rtl_allocator_t allocator;      /**< The memory allocator handler. */
   rtems_chain_control   objects;        /**< List if loaded object files. */
   const char*           paths;          /**< Search paths for archives. */
   rtems_rtl_symbols_t   globals;        /**< Global symbol table. */

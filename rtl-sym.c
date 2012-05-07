@@ -125,7 +125,7 @@ rtems_rtl_symbol_global_add (rtems_rtl_obj_t*     obj,
     printf ("rtl: global symbol add: %zi\n", count);
   
   obj->global_size = count * sizeof (rtems_rtl_obj_sym_t);
-  obj->global_table = malloc (obj->global_size);
+  obj->global_table = rtems_rtl_alloc_new (RTEMS_RTL_ALLOC_SYMBOL, obj->global_size);
   if (!obj->global_table)
   {
     obj->global_size = 0;
@@ -221,7 +221,7 @@ rtems_rtl_obj_symbol_erase (rtems_rtl_obj_t* obj)
     for (s = 0, sym = obj->global_table; s < obj->global_syms; ++s, ++sym)
         if (!rtems_chain_is_node_off_chain (&sym->node))
           rtems_chain_extract (&sym->node);
-    free (obj->global_table);
+    rtems_rtl_alloc_del (RTEMS_RTL_ALLOC_SYMBOL, obj->global_table);
     obj->global_table = NULL;
     obj->global_size = 0;
     obj->global_syms = 0;
