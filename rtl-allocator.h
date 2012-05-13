@@ -18,12 +18,17 @@
 
 #include <stdbool.h>
 
+#include "rtl-indirect-ptr.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
 
 /**
  * Define the types of allocation the loader requires.
+ *
+ * @note The module allocation type may need to be split into text, data and
+ *       bss if memory protection schemes require we do this.
  */
 enum rtems_rtl_alloc_tags_e {
   RTEMS_RTL_ALLOC_SYMBOL,  /**< A symbol in the symbol table. */
@@ -32,7 +37,15 @@ enum rtems_rtl_alloc_tags_e {
   RTEMS_RTL_ALLOC_MODULE   /**< The module's code, data and bss memory. */
 };
 
+/**
+ * The allocator tag type.
+ */
 typedef enum rtems_rtl_alloc_tags_e rtems_rtl_alloc_tag_t;
+
+/**
+ * The number of tags.
+ */
+#define RTEMS_RTL_ALLOC_TAGS ((size_t) (RTEMS_RTL_ALLOC_MODULE + 1))
 
 /**
  * Allocator handler handles all RTL allocations. It can be hooked and
@@ -52,6 +65,25 @@ typedef void (*rtems_rtl_allocator_t)(bool                  allocate,
                                       rtems_rtl_alloc_tag_t tag,
                                       void**                address,
                                       size_t                size);
+
+/**
+ * The allocator data.
+ */
+struct rtems_rtl_alloc_data_s {
+  /**< The memory allocator handler. */
+  rtems_rtl_allocator_t allocator;
+  /**< The indirect pointer chains. */
+  rtems_chain_control indirects[RTEMS_RTL_ALLOC_TAGS];
+};
+
+typedef struct rtems_rtl_alloc_data_s rtems_rtl_alloc_data_t;
+
+/**
+ * Initialise the allocate data.
+ *
+ * @param data The data to initialise.
+ */
+void rtems_rtl_alloc_initialise (rtems_rtl_alloc_data_t* data);
 
 /**
  * The Runtime Loader allocator new allocates new memory.
@@ -80,6 +112,26 @@ void rtems_rtl_alloc_del(rtems_rtl_alloc_tag_t tag, void* address);
  * @return rtems_rtl_alloc_handler_t The previous handler.
  */
 rtems_rtl_allocator_t rtems_rtl_alloc_hook(rtems_rtl_allocator_t handler);
+
+/**
+ * Allocate memory to an indirect handle.
+ *
+ * @param tag The type of allocation request.
+ * @param handle The handle to allocate the memory to.
+ * @param size The size of the allocation.
+ */
+void rtems_rtl_alloc_indirect_new (rtems_rtl_alloc_tag_t tag,
+                                   rtems_rtl_ptr_t*      handle,
+                                   size_t                size);
+
+/**
+ * Free memory from an indirect handle.
+ *
+ * @param tag The type of allocation request.
+ * @param handle The handle to free the memory from.
+ */
+void rtems_rtl_alloc_indirect_del (rtems_rtl_alloc_tag_t tag,
+                                   rtems_rtl_ptr_t*      handle);
 
 #ifdef __cplusplus
 }

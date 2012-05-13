@@ -26,8 +26,9 @@
 #include <rtems/libio_.h>
 
 #include <rtl.h>
-#include "rtl-alloc-heap.h"
+#include "rtl-allocator.h"
 #include "rtl-error.h"
+#include "rtl-string.h"
 #include "rtl-trace.h"
 
 /**
@@ -101,9 +102,9 @@ rtems_rtl_data_init (void)
       *rtl = (rtems_rtl_data_t) { 0 };
 
       /*
-       * The default allocator uses the libc heap.
+       * The initialise the allocator data.
        */
-      rtl->allocator = rtems_rtl_alloc_heap;
+      rtems_rtl_alloc_initialise (&rtl->allocator);
 
       /*
        * Create the RTL lock.
@@ -185,7 +186,7 @@ rtems_rtl_data_init (void)
       /*
        * Need to malloc the memory so the free does not complain.
        */
-      rtl->base->oname = strdup ("rtems-kernel");
+      rtems_rtl_str_copy (&rtl->base->oname, "rtems-kernel");
 
       rtems_chain_append (&rtl->objects, &rtl->base->link);
     }
@@ -396,7 +397,7 @@ rtems_rtl_unload_object (rtems_rtl_obj_t* obj)
   bool ok = true;
   
   if (rtems_rtl_trace (RTEMS_RTL_TRACE_UNLOAD))
-    printf ("rtl: unloading '%s'\n", obj->fname);
+    printf ("rtl: unloading '%s'\n", rtems_rtl_obj_fname (obj));
 
   /*
    * If the object is locked it cannot be unloaded and the unload fails.

@@ -159,11 +159,14 @@ rtems_rtl_obj_print_iterator (rtems_chain_node* node, void* data)
   if (!print->base && (obj == print->rtl->base))
       return true;
       
-  printf ("%-*cobject name   : %s\n", print->indent, ' ', obj->oname);
+  printf ("%-*cobject name   : %s\n",
+          print->indent, ' ', rtems_rtl_obj_oname (obj));
   if (print->names)
   {
-    printf ("%-*cfile name     : %s\n", print->indent, ' ', obj->fname);
-    printf ("%-*carchive name  : %s\n", print->indent, ' ', obj->aname);
+    printf ("%-*cfile name     : %s\n",
+            print->indent, ' ', rtems_rtl_obj_fname (obj));
+    printf ("%-*carchive name  : %s\n",
+            print->indent, ' ', rtems_rtl_obj_aname (obj));
     strcpy (flags_str, "--");
     if (obj->flags & RTEMS_RTL_OBJ_LOCKED)
       flags_str[0] = 'L';

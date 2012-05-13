@@ -16,6 +16,8 @@
 #if !defined (_RTEMS_RTL_STRING_H_)
 #define _RTEMS_RTL_STRING_H_
 
+#include <rtl-indirect-ptr.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
@@ -26,7 +28,15 @@ extern "C" {
  * @param s1 The string to duplicate.
  * @return char* The copy of the string. NULL if there is no memory.
  */
-char* rtems_rtl_strdup(const char *s1);
+char* rtems_rtl_strdup (const char *s1);
+
+/**
+ * Copy a string to an indirect pointer.
+ *
+ * @param dst The indirect pointer handle to copy the string too.
+ * @param str The string to copy.
+ */
+void rtems_rtl_str_copy (rtems_rtl_ptr_t* dst, const char* str);
 
 #ifdef __cplusplus
 }

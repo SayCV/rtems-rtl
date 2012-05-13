@@ -56,10 +56,12 @@ rtems_rtl_obj_alloc (void)
 static void
 rtems_rtl_obj_free_names (rtems_rtl_obj_t* obj)
 {
-  rtems_rtl_alloc_del (RTEMS_RTL_ALLOC_STRING, (void*) obj->oname);
-  rtems_rtl_alloc_del (RTEMS_RTL_ALLOC_STRING, (void*) obj->aname);
-  if ((obj->fname != obj->aname) && (obj->fname != obj->oname))
-    rtems_rtl_alloc_del (RTEMS_RTL_ALLOC_STRING, (void*) obj->fname);
+  if (rtems_rtl_obj_oname_valid (obj))
+    rtems_rtl_alloc_indirect_del (RTEMS_RTL_ALLOC_STRING, &obj->oname);
+  if (rtems_rtl_obj_aname_valid (obj))
+    rtems_rtl_alloc_indirect_del (RTEMS_RTL_ALLOC_STRING, &obj->aname);
+  if (rtems_rtl_obj_fname_valid (obj))
+    rtems_rtl_alloc_indirect_del (RTEMS_RTL_ALLOC_STRING, &obj->fname);
 }
 
 bool
@@ -88,33 +90,34 @@ rtems_rtl_obj_unresolved (rtems_rtl_obj_t* obj)
 static bool
 rtems_rtl_obj_parse_name (rtems_rtl_obj_t* obj, const char* name)
 {
-  const char* p;
-  const char* e;
-  char*       aname;
-  char*       oname;
+  rtems_rtl_ptr_t aname;
+  rtems_rtl_ptr_t oname;
+  const char*     p;
+  const char*     e;
+  char*           s;
+  
+  rtems_rtl_ptr_init (&aname);
+  rtems_rtl_ptr_init (&oname);
   
   /*
    * Parse the name to determine if the object file is part of an archive or it
    * is an object file.
    */
   e = name + strlen (name);
-
   p = strchr (name, ':');
-
   if (p == NULL)
     p = e;
 
-  aname = NULL;
-  
-  oname = rtems_rtl_alloc_new (RTEMS_RTL_ALLOC_STRING, p - name + 1);
-  if (oname == NULL)
+  rtems_rtl_alloc_indirect_new (RTEMS_RTL_ALLOC_STRING, &oname, p - name + 1);
+  if (rtems_rtl_ptr_null (&oname))
   {
     rtems_rtl_set_error (ENOMEM, "no memory for object file name");
     return false;
   }
 
-  memcpy (oname, name, p - name);
-  oname[p - name] = '\0';
+  s = rtems_rtl_ptr_get (&oname);
+  memcpy (s, name, p - name);
+  s[p - name] = '\0';
 
   if (p != e)
   {
@@ -122,9 +125,9 @@ rtems_rtl_obj_parse_name (rtems_rtl_obj_t* obj, const char* name)
     
     /*
      * The file name is an archive and the object file name is next after the
-     * delimiter.
+     * delimiter. Move the pointer to the archive name.
      */
-    aname = oname;
+    rtems_rtl_ptr_move (&aname, &oname);
     ++p;
 
     /*
@@ -136,16 +139,18 @@ rtems_rtl_obj_parse_name (rtems_rtl_obj_t* obj, const char* name)
     if (o == NULL)
       o = e;
     
-    oname = rtems_rtl_alloc_new (RTEMS_RTL_ALLOC_STRING, o - p + 1);
-    if (oname == NULL)
+
+    rtems_rtl_alloc_indirect_new (RTEMS_RTL_ALLOC_STRING, &oname, o - p + 1);
+    if (rtems_rtl_ptr_null (&oname))
     {
-      rtems_rtl_alloc_del (RTEMS_RTL_ALLOC_STRING, aname);
+      rtems_rtl_alloc_indirect_del (RTEMS_RTL_ALLOC_STRING, &aname);
       rtems_rtl_set_error (ENOMEM, "no memory for object file name");
       return false;
     }
 
-    memcpy (oname, p, o - p);
-    oname[o - p] = '\0';
+    s = rtems_rtl_ptr_get (&oname);
+    memcpy (s, p, o - p);
+    s[o - p] = '\0';
 
     if (o != e)
     {
@@ -158,8 +163,8 @@ rtems_rtl_obj_parse_name (rtems_rtl_obj_t* obj, const char* name)
     }
   }
 
-  obj->oname = oname;
-  obj->aname = aname;
+  rtems_rtl_ptr_move (&obj->oname, &oname);
+  rtems_rtl_ptr_move (&obj->aname, &aname);
   
   return true;
 }
@@ -300,7 +305,7 @@ rtems_rtl_obj_section_handler (uint32_t                     mask,
 bool
 rtems_rtl_match_name (rtems_rtl_obj_t* obj, const char* name)
 {
-  const char* n1 = obj->oname;
+  const char* n1 = rtems_rtl_ptr_get (&obj->oname);
   while ((*n1 != '\0') && (*n1 != '\n') && (*n1 != '/') &&
          (*name != '\0') && (*name != '/') && (*n1 == *name))
   {
@@ -334,15 +339,15 @@ rtems_rtl_obj_find_file (rtems_rtl_obj_t* obj, const char* name)
    * field to the fname field to that name. If the field is relative we search
    * the paths set in the RTL for the file.
    */
-  if (obj->aname != NULL)
-    n = obj->aname;
+  if (rtems_rtl_obj_aname_valid (obj))
+    n = rtems_rtl_obj_aname (obj);
   else
-    n = obj->oname;
+    n = rtems_rtl_obj_oname (obj);
   
   if (rtems_filesystem_is_delimiter (n[0]))
   {
     if (stat (n, &sb) == 0)
-      obj->fname = n;
+      rtems_rtl_str_copy (&obj->fname, n);
   }
   else
   {
@@ -357,11 +362,14 @@ rtems_rtl_obj_find_file (rtems_rtl_obj_t* obj, const char* name)
     e = s + strlen (rtl->paths);
     l = strlen (n);
 
-    while ((obj->fname == NULL) && (s != e))
+    while (rtems_rtl_ptr_null (&obj->fname) && (s != e))
     {
-      const char* d;
-      char*       p;
+      rtems_rtl_ptr_t fname;
+      const char*     d;
+      char*           p;
 
+      rtems_rtl_ptr_init (&fname);
+      
       d = strchr (s, ':');
       if (d == NULL)
         d = e;
@@ -369,27 +377,30 @@ rtems_rtl_obj_find_file (rtems_rtl_obj_t* obj, const char* name)
       /*
        * Allocate the path fragment, separator, name, terminating nul.
        */
-      p = rtems_rtl_alloc_new (RTEMS_RTL_ALLOC_STRING, (d - s) + 1 + l + 1);
-      if (p == NULL)
+      
+      rtems_rtl_alloc_indirect_new (RTEMS_RTL_ALLOC_STRING,
+                                    &fname, (d - s) + 1 + l + 1);
+      if (rtems_rtl_ptr_null (&fname))
       {
         rtems_rtl_set_error (ENOMEM, "no memory searching for object file");
         rtems_rtl_unlock ();
         return false;
       }
 
+      p = rtems_rtl_ptr_get (&fname);
       memcpy (p, s, d - s);
       p[d - s] = '/';
       memcpy (p + (d - s) + 1, n, l);
       p[(d - s) + 1 + l] = '\0';
 
       if (stat (p, &sb) < 0)
-        rtems_rtl_alloc_del (RTEMS_RTL_ALLOC_STRING, p);
+        rtems_rtl_alloc_indirect_del (RTEMS_RTL_ALLOC_STRING, &fname);
       else
       {
         /*
          * We have found the file. Do not release the path memory.
          */
-        obj->fname = p;
+        rtems_rtl_ptr_move (&obj->fname, &fname);
       }
       
       s = d;
@@ -398,12 +409,15 @@ rtems_rtl_obj_find_file (rtems_rtl_obj_t* obj, const char* name)
     rtems_rtl_unlock ();
   }
 
-  if (obj->fname)
-    obj->fsize = sb.st_size;
-  else
+  if (rtems_rtl_ptr_null (&obj->fname))
+  {
     rtems_rtl_set_error (ENOMEM, "object file not found");
+    return false;
+  }
 
-  return obj->fname ? true : false;
+  obj->fsize = sb.st_size;
+
+  return true;
 }
 
 bool
@@ -986,13 +1000,13 @@ rtems_rtl_obj_load (rtems_rtl_obj_t* obj)
 {
   int fd;
 
-  if (!obj->fname)
+  if (!rtems_rtl_obj_fname_valid (obj))
   {
     rtems_rtl_set_error (ENOMEM, "invalid object file name path");
     return false;
   }
   
-  fd = open (obj->fname, O_RDONLY);
+  fd = open (rtems_rtl_obj_fname (obj), O_RDONLY);
   if (fd < 0)
   {
     rtems_rtl_set_error (ENOMEM, "opening for object file");
@@ -1003,7 +1017,7 @@ rtems_rtl_obj_load (rtems_rtl_obj_t* obj)
    * Find the object file in the archive if it is an archive that
    * has been opened.
    */
-  if (obj->aname != NULL)
+  if (rtems_rtl_obj_aname_valid (obj))
   {
     if (!rtems_rtl_obj_archive_find (obj, fd))
     {

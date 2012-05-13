@@ -80,17 +80,17 @@ typedef void (*rtems_rtl_cdtor_t)(void);
  */
 struct rtems_rtl_data_s
 {
-  rtems_id              lock;           /**< The RTL lock id */
-  rtems_rtl_allocator_t allocator;      /**< The memory allocator handler. */
-  rtems_chain_control   objects;        /**< List if loaded object files. */
-  const char*           paths;          /**< Search paths for archives. */
-  rtems_rtl_symbols_t   globals;        /**< Global symbol table. */
-  rtems_rtl_obj_t*      base;           /**< Base object file. */
-  rtems_rtl_obj_cache_t symbols;        /**< Symbols object file cache. */
-  rtems_rtl_obj_cache_t strings;        /**< Strings object file cache. */
-  rtems_rtl_obj_cache_t relocs;         /**< Relocations object file cache. */
-  int                   last_errno;     /**< Last error number. */
-  char                  last_error[64]; /**< Last error string. */
+  rtems_id               lock;           /**< The RTL lock id */
+  rtems_rtl_alloc_data_t allocator;      /**< The allocator data. */
+  rtems_chain_control    objects;        /**< List if loaded object files. */
+  const char*            paths;          /**< Search paths for archives. */
+  rtems_rtl_symbols_t    globals;        /**< Global symbol table. */
+  rtems_rtl_obj_t*       base;           /**< Base object file. */
+  rtems_rtl_obj_cache_t  symbols;        /**< Symbols object file cache. */
+  rtems_rtl_obj_cache_t  strings;        /**< Strings object file cache. */
+  rtems_rtl_obj_cache_t  relocs;         /**< Relocations object file cache. */
+  int                    last_errno;     /**< Last error number. */
+  char                   last_error[64]; /**< Last error string. */
 };
 
 /**

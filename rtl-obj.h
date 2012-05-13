@@ -18,6 +18,7 @@
 
 #include <rtems.h>
 #include <rtems/chain.h>
+#include <rtl-indirect-ptr.h>
 #include <rtl-sym.h>
 
 #ifdef __cplusplus
@@ -82,10 +83,10 @@ struct rtems_rtl_obj_s
   rtems_chain_node     link;         /**< The node's link in the chain. */
   uint32_t             flags;        /**< The status of the object file. */
   uint32_t             users;        /**< References to the object file. */
-  const char*          fname;        /**< The file name for the object. */
-  const char*          oname;        /**< The object file name. Can be
+  rtems_rtl_ptr_t      fname;        /**< The file name for the object. */
+  rtems_rtl_ptr_t      oname;        /**< The object file name. Can be
                                       *   relative. */
-  const char*          aname;        /**< The archive name containing the
+  rtems_rtl_ptr_t      aname;        /**< The archive name containing the
                                       *   object. NULL means the object is not
                                       *   in a lib */
   off_t                ooffset;      /**< The object offset in the archive. */
@@ -126,6 +127,72 @@ typedef bool (*rtems_rtl_obj_sect_handler_t)(rtems_rtl_obj_t*      obj,
                                              int                   fd,
                                              rtems_rtl_obj_sect_t* sect,
                                              void*                 data);
+
+/**
+ * Get the file name.
+ *
+ * @param obj The object file.
+ * @return const char* The string.
+ */
+static inline const char* rtems_rtl_obj_fname (rtems_rtl_obj_t* obj)
+{
+  return rtems_rtl_ptr_type_get (&obj->fname, const char);
+}
+
+/**
+ * Is the file name valid ?
+ *
+ * @param obj The object file.
+ * @return bool There is a file name
+ */
+static inline bool rtems_rtl_obj_fname_valid (rtems_rtl_obj_t* obj)
+{
+  return !rtems_rtl_ptr_null (&obj->fname);
+}
+
+/**
+ * Get the object name.
+ *
+ * @param obj The object file.
+ * @return const char* The string.
+ */
+static inline const char* rtems_rtl_obj_oname (rtems_rtl_obj_t* obj)
+{
+  return rtems_rtl_ptr_type_get (&obj->oname, const char);
+}
+
+/**
+ * Is the object name valid ?
+ *
+ * @param obj The object file.
+ * @return bool There is an object name
+ */
+static inline bool rtems_rtl_obj_oname_valid (rtems_rtl_obj_t* obj)
+{
+  return !rtems_rtl_ptr_null (&obj->oname);
+}
+
+/**
+ * Get the archive name.
+ *
+ * @param obj The object file.
+ * @return const char* The string.
+ */
+static inline const char* rtems_rtl_obj_aname (rtems_rtl_obj_t* obj)
+{
+  return rtems_rtl_ptr_type_get (&obj->aname, const char);
+}
+
+/**
+ * Is the archive name valid ?
+ *
+ * @param obj The object file.
+ * @return bool There is an archive name
+ */
+static inline bool rtems_rtl_obj_aname_valid (rtems_rtl_obj_t* obj)
+{
+  return !rtems_rtl_ptr_null (&obj->aname);
+}
 
 /**
  * Allocate an object structure on the heap.

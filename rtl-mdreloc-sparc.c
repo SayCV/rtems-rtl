@@ -176,7 +176,8 @@ rtems_rtl_elf_relocate_rela (rtems_rtl_obj_t*      obj,
   if (type == R_TYPE (RELATIVE)) {
     *where += (Elf_Addr)(sect->base + value);
     if (rtems_rtl_trace (RTEMS_RTL_TRACE_RELOC))
-      printf ("rtl: reloc relative in %s --> %p", obj->oname, (void *)*where);
+      printf ("rtl: reloc relative in %s --> %p",
+              rtems_rtl_obj_oname (obj), (void *)*where);
     return true;
   }
 
@@ -208,7 +209,8 @@ rtems_rtl_elf_relocate_rela (rtems_rtl_obj_t*      obj,
       if (rtems_rtl_trace (RTEMS_RTL_TRACE_RELOC))
         printf("rtl: reloc base_rel(%s): where=%p, *where 0x%lx, "
                "addend=0x%lx, base %p\n",
-               obj->oname, where, *where, rela->r_addend, sect->base);
+               rtems_rtl_obj_oname (obj),
+               where, *where, rela->r_addend, sect->base);
     }
 #endif
     value += (Elf_Word)(sect->base + *where);
