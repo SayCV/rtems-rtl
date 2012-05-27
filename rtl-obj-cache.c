@@ -33,7 +33,7 @@ rtems_rtl_obj_cache_open (rtems_rtl_obj_cache_t* cache, size_t size)
   cache->offset = 0;
   cache->size   = size;
   cache->level  = 0;
-  cache->buffer = rtems_rtl_alloc_new (RTEMS_RTL_ALLOC_OBJECT, size);
+  cache->buffer = rtems_rtl_alloc_new (RTEMS_RTL_ALLOC_OBJECT, size, false);
   if (!cache->buffer)
   {
     rtems_rtl_set_error (ENOMEM, "no memory for cache buffer");

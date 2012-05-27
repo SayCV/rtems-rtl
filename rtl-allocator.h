@@ -27,14 +27,16 @@ extern "C" {
 /**
  * Define the types of allocation the loader requires.
  *
- * @note The module allocation type may need to be split into text, data and
- *       bss if memory protection schemes require we do this.
+ * @note It is best to use the object tag for general memory allocation and to
+ *       leave the tags with specific access properties to the module data  
  */
 enum rtems_rtl_alloc_tags_e {
-  RTEMS_RTL_ALLOC_SYMBOL,  /**< A symbol in the symbol table. */
-  RTEMS_RTL_ALLOC_STRING,  /**< A runtime loader string. */
-  RTEMS_RTL_ALLOC_OBJECT,  /**< An RTL object. */
-  RTEMS_RTL_ALLOC_MODULE   /**< The module's code, data and bss memory. */
+  RTEMS_RTL_ALLOC_OBJECT,     /**< A generic memory object. */
+  RTEMS_RTL_ALLOC_SYMBOL,     /**< Memory used for symbols. */
+  RTEMS_RTL_ALLOC_EXTERNAL,   /**< Memory used for external symbols. */
+  RTEMS_RTL_ALLOC_READ,       /**< The memory is read only. */
+  RTEMS_RTL_ALLOC_READ_WRITE, /**< The memory is read and write. */
+  RTEMS_RTL_ALLOC_READ_EXEC   /**< The memory is read and executable. */
 };
 
 /**
@@ -45,7 +47,7 @@ typedef enum rtems_rtl_alloc_tags_e rtems_rtl_alloc_tag_t;
 /**
  * The number of tags.
  */
-#define RTEMS_RTL_ALLOC_TAGS ((size_t) (RTEMS_RTL_ALLOC_MODULE + 1))
+#define RTEMS_RTL_ALLOC_TAGS ((size_t) (RTEMS_RTL_ALLOC_READ_EXEC + 1))
 
 /**
  * Allocator handler handles all RTL allocations. It can be hooked and
@@ -86,13 +88,15 @@ typedef struct rtems_rtl_alloc_data_s rtems_rtl_alloc_data_t;
 void rtems_rtl_alloc_initialise (rtems_rtl_alloc_data_t* data);
 
 /**
- * The Runtime Loader allocator new allocates new memory.
+ * The Runtime Loader allocator new allocates new memory and optionally clear
+ * the memory if requested.
  *
  * @param tag The type of allocation request.
  * @param size The size of the allocation.
+ * @param zero If true the memory is cleared.
  * @return void* The memory address or NULL is not memory available.
  */
-void* rtems_rtl_alloc_new(rtems_rtl_alloc_tag_t tag, size_t size);
+void* rtems_rtl_alloc_new(rtems_rtl_alloc_tag_t tag, size_t size, bool zero);
 
 /**
  * The Runtime Loader allocator delete deletes allocated memory.
@@ -132,6 +136,38 @@ void rtems_rtl_alloc_indirect_new (rtems_rtl_alloc_tag_t tag,
  */
 void rtems_rtl_alloc_indirect_del (rtems_rtl_alloc_tag_t tag,
                                    rtems_rtl_ptr_t*      handle);
+
+/**
+ * Allocate the memory for a module given the size of the text, const, data and
+ * bss sections. If any part of the allocation fails the no memory is
+ * allocated.
+ *
+ * @param text_base Pointer to the text base pointer.
+ * @param text_size The size of the read/exec section.
+ * @param const_base Pointer to the const base pointer.
+ * @param const_size The size of the read only section.
+ * @param data_base Pointer to the data base pointer.
+ * @prarm data_size The size of the read/write secton.
+ * @param bss_base Pointer to the bss base pointer.
+ * @param bss_size The size of the read/write.
+ * @retval true The memory has been allocated.
+ * @retval false The allocation of memory has failed.
+ */
+bool rtems_rtl_alloc_module_new (void** text_base, size_t text_size,
+                                 void** const_base, size_t const_size,
+                                 void** data_base, size_t data_size,
+                                 void** bss_base, size_t bss_size);
+
+/**
+ * Free the memory allocated to a module.
+ *
+ * @param text_base Pointer to the text base pointer.
+ * @param const_base Pointer to the const base pointer.
+ * @param data_base Pointer to the data base pointer.
+ * @param bss_base Pointer to the bss base pointer.
+ */
+void rtems_rtl_alloc_module_del (void** text_base, void** const_base,
+                                 void** data_base, void** bss_base);
 
 #ifdef __cplusplus
 }

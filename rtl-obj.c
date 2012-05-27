@@ -37,14 +37,10 @@ rtems_rtl_obj_t*
 rtems_rtl_obj_alloc (void)
 {
   rtems_rtl_obj_t* obj = rtems_rtl_alloc_new (RTEMS_RTL_ALLOC_OBJECT,
-                                              sizeof (rtems_rtl_obj_t));
+                                              sizeof (rtems_rtl_obj_t),
+                                              true);
   if (obj)
   {
-    /*
-     * Initalise to 0.
-     */
-    *obj = (rtems_rtl_obj_t) { { 0 } };
-
     /*
      * Initialise the chains.
      */
@@ -57,11 +53,11 @@ static void
 rtems_rtl_obj_free_names (rtems_rtl_obj_t* obj)
 {
   if (rtems_rtl_obj_oname_valid (obj))
-    rtems_rtl_alloc_indirect_del (RTEMS_RTL_ALLOC_STRING, &obj->oname);
+    rtems_rtl_alloc_del (RTEMS_RTL_ALLOC_OBJECT, (void*) obj->oname);
   if (rtems_rtl_obj_aname_valid (obj))
-    rtems_rtl_alloc_indirect_del (RTEMS_RTL_ALLOC_STRING, &obj->aname);
+    rtems_rtl_alloc_del (RTEMS_RTL_ALLOC_OBJECT, (void*) obj->aname);
   if (rtems_rtl_obj_fname_valid (obj))
-    rtems_rtl_alloc_indirect_del (RTEMS_RTL_ALLOC_STRING, &obj->fname);
+    rtems_rtl_alloc_del (RTEMS_RTL_ALLOC_OBJECT, (void*) obj->fname);
 }
 
 bool
@@ -74,8 +70,9 @@ rtems_rtl_obj_free (rtems_rtl_obj_t* obj)
   }
   if (!rtems_chain_is_node_off_chain (&obj->link))
     rtems_chain_extract (&obj->link);
+  rtems_rtl_alloc_module_del (&obj->text_base, &obj->const_base,
+                              &obj->data_base, &obj->bss_base);
   rtems_rtl_obj_symbol_erase (obj);
-  rtems_rtl_alloc_del (RTEMS_RTL_ALLOC_MODULE, obj->text_base);
   rtems_rtl_obj_free_names (obj);
   rtems_rtl_alloc_del (RTEMS_RTL_ALLOC_OBJECT, obj);
   return true;
@@ -90,81 +87,77 @@ rtems_rtl_obj_unresolved (rtems_rtl_obj_t* obj)
 static bool
 rtems_rtl_obj_parse_name (rtems_rtl_obj_t* obj, const char* name)
 {
-  rtems_rtl_ptr_t aname;
-  rtems_rtl_ptr_t oname;
-  const char*     p;
-  const char*     e;
-  char*           s;
-  
-  rtems_rtl_ptr_init (&aname);
-  rtems_rtl_ptr_init (&oname);
+  const char* aname = NULL;
+  const char* oname = NULL;
+  const char* colon;
+  const char* end;
   
   /*
    * Parse the name to determine if the object file is part of an archive or it
-   * is an object file.
+   * is an object file. If an archive check the name for a '@' to see if the
+   * archive contains an offset.
    */
-  e = name + strlen (name);
-  p = strchr (name, ':');
-  if (p == NULL)
-    p = e;
+  end = name + strlen (name);
+  colon = strchr (name, ':');
+  if (colon == NULL)
+    colon = end;
 
-  rtems_rtl_alloc_indirect_new (RTEMS_RTL_ALLOC_STRING, &oname, p - name + 1);
-  if (rtems_rtl_ptr_null (&oname))
+  oname = rtems_rtl_alloc_new (RTEMS_RTL_ALLOC_OBJECT, colon - name + 1, true);
+  if (!oname)
   {
     rtems_rtl_set_error (ENOMEM, "no memory for object file name");
     return false;
   }
 
-  s = rtems_rtl_ptr_get (&oname);
-  memcpy (s, name, p - name);
-  s[p - name] = '\0';
+  memcpy ((void*) oname, name, colon - name);
 
-  if (p != e)
+  /*
+   * If the pointers match there is no ':' delimiter.
+   */
+  if (colon != end)
   {
-    const char* o;
+    const char* at;
     
     /*
      * The file name is an archive and the object file name is next after the
      * delimiter. Move the pointer to the archive name.
      */
-    rtems_rtl_ptr_move (&aname, &oname);
-    ++p;
+    aname = oname;
+    ++colon;
 
     /*
      * See if there is a '@' to delimit an archive offset for the object in the
      * archive.
      */
-    o = strchr (p, '@');
+    at = strchr (colon, '@');
 
-    if (o == NULL)
-      o = e;
+    if (at == NULL)
+      at = end;
     
 
-    rtems_rtl_alloc_indirect_new (RTEMS_RTL_ALLOC_STRING, &oname, o - p + 1);
-    if (rtems_rtl_ptr_null (&oname))
+    oname = rtems_rtl_alloc_new (RTEMS_RTL_ALLOC_OBJECT, at - colon + 1, true);
+    if (!oname)
     {
-      rtems_rtl_alloc_indirect_del (RTEMS_RTL_ALLOC_STRING, &aname);
+      rtems_rtl_alloc_del (RTEMS_RTL_ALLOC_OBJECT, (void*) aname);
       rtems_rtl_set_error (ENOMEM, "no memory for object file name");
       return false;
     }
 
-    s = rtems_rtl_ptr_get (&oname);
-    memcpy (s, p, o - p);
-    s[o - p] = '\0';
+    memcpy ((void*) oname, colon, at - colon);
 
-    if (o != e)
+    if (at != end)
     {
       /*
        * The object name has an archive offset. If the number
        * does not parse 0 will be returned and the archive will be
        * searched.
        */
-      obj->ooffset = strtoul (o + 1, 0, 0);
+      obj->ooffset = strtoul (at + 1, 0, 0);
     }
   }
 
-  rtems_rtl_ptr_move (&obj->oname, &oname);
-  rtems_rtl_ptr_move (&obj->aname, &aname);
+  obj->oname = oname;
+  obj->aname = aname;
   
   return true;
 }
@@ -305,7 +298,7 @@ rtems_rtl_obj_section_handler (uint32_t                     mask,
 bool
 rtems_rtl_match_name (rtems_rtl_obj_t* obj, const char* name)
 {
-  const char* n1 = rtems_rtl_ptr_get (&obj->oname);
+  const char* n1 = obj->oname;
   while ((*n1 != '\0') && (*n1 != '\n') && (*n1 != '/') &&
          (*name != '\0') && (*name != '/') && (*n1 == *name))
   {
@@ -322,7 +315,7 @@ bool
 rtems_rtl_obj_find_file (rtems_rtl_obj_t* obj, const char* name)
 {
   struct stat sb;
-  const char* n;
+  const char* pname;
 
   /*
    * Parse the name. The object descriptor will have the archive name and/or
@@ -340,76 +333,71 @@ rtems_rtl_obj_find_file (rtems_rtl_obj_t* obj, const char* name)
    * the paths set in the RTL for the file.
    */
   if (rtems_rtl_obj_aname_valid (obj))
-    n = rtems_rtl_obj_aname (obj);
+    pname = rtems_rtl_obj_aname (obj);
   else
-    n = rtems_rtl_obj_oname (obj);
+    pname = rtems_rtl_obj_oname (obj);
   
-  if (rtems_filesystem_is_delimiter (n[0]))
+  if (rtems_filesystem_is_delimiter (pname[0]))
   {
-    if (stat (n, &sb) == 0)
-      rtems_rtl_str_copy (&obj->fname, n);
+    if (stat (pname, &sb) == 0)
+      obj->fname = rtems_rtl_strdup (pname);
   }
   else
   {
     rtems_rtl_data_t* rtl;
-    const char*       s;
-    const char*       e;
-    int               l;
+    const char*       start;
+    const char*       end;
+    int               len;
+    char*             fname;
 
     rtl = rtems_rtl_lock ();
     
-    s = rtl->paths;
-    e = s + strlen (rtl->paths);
-    l = strlen (n);
+    start = rtl->paths;
+    end = start + strlen (rtl->paths);
+    len = strlen (pname);
 
-    while (rtems_rtl_ptr_null (&obj->fname) && (s != e))
+    while (!obj->fname && (start != end))
     {
-      rtems_rtl_ptr_t fname;
-      const char*     d;
-      char*           p;
-
-      rtems_rtl_ptr_init (&fname);
+      const char* delimiter = strchr (start, ':');
       
-      d = strchr (s, ':');
-      if (d == NULL)
-        d = e;
+      if (delimiter == NULL)
+        delimiter = end;
 
       /*
-       * Allocate the path fragment, separator, name, terminating nul.
+       * Allocate the path fragment, separator, name, terminating nul. Form the
+       * path then see if the stat call works.
        */
       
-      rtems_rtl_alloc_indirect_new (RTEMS_RTL_ALLOC_STRING,
-                                    &fname, (d - s) + 1 + l + 1);
-      if (rtems_rtl_ptr_null (&fname))
+      fname = rtems_rtl_alloc_new (RTEMS_RTL_ALLOC_OBJECT,
+                                   (delimiter - start) + 1 + len + 1, true);
+      if (!fname)
       {
         rtems_rtl_set_error (ENOMEM, "no memory searching for object file");
         rtems_rtl_unlock ();
         return false;
       }
 
-      p = rtems_rtl_ptr_get (&fname);
-      memcpy (p, s, d - s);
-      p[d - s] = '/';
-      memcpy (p + (d - s) + 1, n, l);
-      p[(d - s) + 1 + l] = '\0';
+      memcpy (fname, start, delimiter - start);
+      fname[delimiter - start] = '/';
+      memcpy (fname + (delimiter - start) + 1, pname, len);
 
-      if (stat (p, &sb) < 0)
-        rtems_rtl_alloc_indirect_del (RTEMS_RTL_ALLOC_STRING, &fname);
+      if (rtems_rtl_trace (RTEMS_RTL_TRACE_LOAD))
+        printf ("rtl: loading: find-path: %s\n", fname);
+  
+      if (stat (fname, &sb) < 0)
+        rtems_rtl_alloc_del (RTEMS_RTL_ALLOC_OBJECT, fname);
       else
-      {
-        /*
-         * We have found the file. Do not release the path memory.
-         */
-        rtems_rtl_ptr_move (&obj->fname, &fname);
-      }
-      
-      s = d;
+        obj->fname = fname;
+
+      start = delimiter;
+      if (start != end)
+        ++start;
     }
 
     rtems_rtl_unlock ();
   }
 
-  if (rtems_rtl_ptr_null (&obj->fname))
+  if (!obj->fname)
   {
     rtems_rtl_set_error (ENOMEM, "object file not found");
     return false;
@@ -432,7 +420,7 @@ rtems_rtl_obj_add_section (rtems_rtl_obj_t* obj,
                            uint32_t         flags)
 {
   rtems_rtl_obj_sect_t* sect = rtems_rtl_alloc_new (RTEMS_RTL_ALLOC_OBJECT,
-                                                    sizeof (rtems_rtl_obj_sect_t));
+                                                    sizeof (rtems_rtl_obj_sect_t), true);
   if (!sect)
   {
     rtems_rtl_set_error (ENOMEM, "adding allocated section");
@@ -450,7 +438,7 @@ rtems_rtl_obj_add_section (rtems_rtl_obj_t* obj,
   rtems_chain_append (&obj->sections, &sect->node);
 
   if (rtems_rtl_trace (RTEMS_RTL_TRACE_SECTION))
-    printf ("sect: %-2d: %s\n", section, name);
+    printf ("rtl: sect: %-2d: %s\n", section, name);
   
   return true;
 }
@@ -464,8 +452,8 @@ rtems_rtl_obj_erase_sections (rtems_rtl_obj_t* obj)
     rtems_rtl_obj_sect_t* sect = (rtems_rtl_obj_sect_t*) node;
     rtems_chain_node*     next_node = rtems_chain_next (node);
     rtems_chain_extract (node);
-    rtems_rtl_alloc_del (RTEMS_RTL_ALLOC_STRING, (void*) sect->name);
-    rtems_rtl_alloc_del (RTEMS_RTL_ALLOC_OBJECT, node);
+    rtems_rtl_alloc_del (RTEMS_RTL_ALLOC_OBJECT, (void*) sect->name);
+    rtems_rtl_alloc_del (RTEMS_RTL_ALLOC_OBJECT, sect);
     node = next_node;
   }
 }
@@ -681,22 +669,20 @@ rtems_rtl_obj_load_sections (rtems_rtl_obj_t* obj, int fd)
   bss_size   = rtems_rtl_obj_bss_size (obj);
   
   /*
-   * The object file's memory allocated on the heap. This should be the
-   * first allocation and any temporary allocations come after this
-   * so the heap does not become fragmented.
+   * Let the allocator manage the actual allocation. The user can use the
+   * standard heap or provide a specific allocator with memory protection.
    */
-  obj->exec_size = text_size + const_size + data_size + bss_size;
-  obj->text_base = rtems_rtl_alloc_new (RTEMS_RTL_ALLOC_OBJECT, obj->exec_size);
-  if (!obj->text_base)
+  if (!rtems_rtl_alloc_module_new (&obj->text_base, text_size,
+                                   &obj->const_base, const_size,
+                                   &obj->data_base, data_size,
+                                   &obj->bss_base, bss_size))
   {
     obj->exec_size = 0;
     rtems_rtl_set_error (ENOMEM, "no memory to load obj");
     return false;
   }
 
-  obj->const_base = obj->text_base + text_size;
-  obj->data_base  = obj->const_base + const_size;
-  obj->bss_base   = obj->data_base + data_size;
+  obj->exec_size = text_size + const_size + data_size + bss_size;
 
   if (rtems_rtl_trace (RTEMS_RTL_TRACE_LOAD_SECT))
   {
@@ -723,11 +709,9 @@ rtems_rtl_obj_load_sections (rtems_rtl_obj_t* obj, int fd)
       !rtems_rtl_obj_sections_loader (&obj->sections, RTEMS_RTL_OBJ_SECT_BSS,
                                       fd, obj->ooffset, obj->bss_base))
   {
-    rtems_rtl_alloc_del (RTEMS_RTL_ALLOC_MODULE, obj->text_base);
+    rtems_rtl_alloc_module_del (&obj->text_base, &obj->const_base,
+                                &obj->data_base, &obj->bss_base);
     obj->exec_size = 0;
-    obj->text_base = 0;
-    obj->data_base = 0;
-    obj->bss_base = 0;
     return false;
   }
 

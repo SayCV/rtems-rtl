@@ -186,7 +186,7 @@ rtems_rtl_data_init (void)
       /*
        * Need to malloc the memory so the free does not complain.
        */
-      rtems_rtl_str_copy (&rtl->base->oname, "rtems-kernel");
+      rtl->base->oname = rtems_rtl_strdup ("rtems-kernel");
 
       rtems_chain_append (&rtl->objects, &rtl->base->link);
     }
@@ -453,7 +453,7 @@ rtems_rtl_path_update (bool prepend, const char* path)
   else
     prepend = true;
   
-  paths = rtems_rtl_alloc_new (RTEMS_RTL_ALLOC_STRING, len + 1);
+  paths = rtems_rtl_alloc_new (RTEMS_RTL_ALLOC_OBJECT, len + 1, false);
   
   if (!paths)
   {

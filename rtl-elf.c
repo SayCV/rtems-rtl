@@ -123,7 +123,7 @@ rtems_rtl_elf_relocator (rtems_rtl_obj_t*      obj,
   }
   
   if (rtems_rtl_trace (RTEMS_RTL_TRACE_RELOC))
-    printf ("relocation: %s, syms:%s\n", sect->name, symsect->name);
+    printf ("rtl: relocation: %s, syms:%s\n", sect->name, symsect->name);
 
   /*
    * Handle the different relocation record types.
@@ -203,7 +203,7 @@ rtems_rtl_elf_relocator (rtems_rtl_obj_t*      obj,
       if (is_rela)
       {
         if (rtems_rtl_trace (RTEMS_RTL_TRACE_RELOC))
-          printf ("rela: sym:%-2d type:%-2d off:%08lx addend:%d\n",
+          printf ("rtl: rela: sym:%-2d type:%-2d off:%08lx addend:%d\n",
                   (int) ELF_R_SYM (rela->r_info), (int) ELF_R_TYPE (rela->r_info),
                   rela->r_offset, (int) rela->r_addend);
         if (!rtems_rtl_elf_relocate_rela (obj, rela, targetsect, symvalue))
@@ -212,7 +212,7 @@ rtems_rtl_elf_relocator (rtems_rtl_obj_t*      obj,
       else
       {
         if (rtems_rtl_trace (RTEMS_RTL_TRACE_RELOC))
-        printf ("rel: sym:%-2d type:%-2d off:%08lx\n",
+        printf ("rtl: rel: sym:%-2d type:%-2d off:%08lx\n",
                 (int) ELF_R_SYM (rel->r_info), (int) ELF_R_TYPE (rel->r_info),
                 rel->r_offset);
         if (!rtems_rtl_elf_relocate_rel (obj, rel, targetsect, symvalue))
@@ -319,7 +319,8 @@ rtems_rtl_elf_symbols (rtems_rtl_obj_t*      obj,
     rtems_rtl_obj_sym_t* gsym;
     
     obj->global_size = globals * sizeof (rtems_rtl_obj_sym_t) + string_space;
-    obj->global_table = calloc (1, obj->global_size);
+    obj->global_table = rtems_rtl_alloc_new (RTEMS_RTL_ALLOC_SYMBOL,
+                                             obj->global_size, true);
     if (!obj->global_table)
     {
       obj->global_size = 0;
@@ -381,7 +382,7 @@ rtems_rtl_elf_symbols (rtems_rtl_obj_t*      obj,
         gsym->value = symbol.st_value + (uint8_t*) symsect->base;
 
         if (rtems_rtl_trace (RTEMS_RTL_TRACE_SYMBOL))
-          printf ("sym:%-2d name:%-2d:%-20s bind:%-2d type:%-2d val:%8p sect:%d size:%d\n",
+          printf ("rtl: sym:%-2d name:%-2d:%-20s bind:%-2d type:%-2d val:%8p sect:%d size:%d\n",
                   sym, (int) symbol.st_name, gsym->name,
                   (int) ELF_ST_BIND (symbol.st_info),
                   (int) ELF_ST_TYPE (symbol.st_info),
@@ -493,7 +494,7 @@ rtems_rtl_elf_parse_sections (rtems_rtl_obj_t* obj, int fd, Elf_Ehdr* ehdr)
         break;
 
       default:
-        printf ("unsupported section: %2d: type=%02d flags=%02x\n",
+        printf ("rtl: unsupported section: %2d: type=%02d flags=%02x\n",
                 section, (int) shdr.sh_type, (int) shdr.sh_flags);
         break;
     }

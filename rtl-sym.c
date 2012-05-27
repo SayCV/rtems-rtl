@@ -125,7 +125,8 @@ rtems_rtl_symbol_global_add (rtems_rtl_obj_t*     obj,
     printf ("rtl: global symbol add: %zi\n", count);
   
   obj->global_size = count * sizeof (rtems_rtl_obj_sym_t);
-  obj->global_table = rtems_rtl_alloc_new (RTEMS_RTL_ALLOC_SYMBOL, obj->global_size);
+  obj->global_table = rtems_rtl_alloc_new (RTEMS_RTL_ALLOC_SYMBOL,
+                                           obj->global_size, true);
   if (!obj->global_table)
   {
     obj->global_size = 0;
