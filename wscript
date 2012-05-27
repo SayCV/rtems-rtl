@@ -46,6 +46,13 @@ def build(bld):
     if bld.env.ASCIIDOC:
         bld(target = 'rtems-rtl.html', source = 'rtems-rtl.txt')
 
+def rebuild(ctx):
+    import waflib.Options
+    waflib.Options.commands.extend(['clean', 'build'])
+
+def tags(ctx):
+    ctx.exec_command('etags $(find . -name \*.[sSch])', shell = True)
+
 def rtl_source(bld, arch):
     bld(target = 'rtl',
         features = 'c',
