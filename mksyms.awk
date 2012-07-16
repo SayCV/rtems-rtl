@@ -54,6 +54,7 @@ function c_constructor_trailer()
 function c_embedded_trailer()
 {
   c_trailer();
+  print ("void rtems_rtl_base_global_syms_init(void);");
   print ("void rtems_rtl_base_global_syms_init(void)");
   c_rtl_call_body();
 }
@@ -61,6 +62,7 @@ function c_embedded_trailer()
 BEGIN {
   FS = "[ \t\n]";
   OFS = " ";
+  started = 0
   embed = 0
   for (a = 0; a < ARGC; ++a)
   {
@@ -69,26 +71,35 @@ BEGIN {
       embed = 1
       delete ARGV[a];
     }
+    else if (ARGV[a] != "-" && ARGV[a] != "awk")
+    {
+      print ("invalid option:", ARGV[a]);
+      exit 2
+    }
   }
   c_header();
   syms = 0
+  started = 1
 }
-END { 
-  for (s = 0; s < syms; ++s)
+END {
+  if (started)
   {
-    printf ("asm(\"  .asciz \\\"%s\\\"\");\n", symbols[s]);
-    if (embed) 
+    for (s = 0; s < syms; ++s)
     {
-      printf ("asm(\"  .align 0\");\n");
-      printf ("asm(\"  .long %s\");\n", symbols[s]);
+      printf ("asm(\"  .asciz \\\"%s\\\"\");\n", symbols[s]);
+      if (embed)
+      {
+        printf ("asm(\"  .align 0\");\n");
+        printf ("asm(\"  .long %s\");\n", symbols[s]);
+      }
+      else
+        printf ("asm(\"  .long 0x%s\");\n", addresses[s]);
     }
+    if (embed)
+      c_embedded_trailer();
     else
-      printf ("asm(\"  .long 0x%s\");\n", addresses[s]);
+      c_constructor_trailer();
   }
-  if (embed)
-    c_embedded_trailer();
-  else
-    c_constructor_trailer();
 }
 
 #

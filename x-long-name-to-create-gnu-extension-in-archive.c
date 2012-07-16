@@ -14,6 +14,10 @@ void y_writeln(const char* s) __attribute__ ((section (".bar")));
 int z_writeln(int argc, const char* argv[]);
 int my_main (int argc, char* argv[]);
 
+#if RTL_GSYM_EMBEDDED
+#define sin(_d) (_d)
+#endif
+
 void
 w_writeln(double d)
 {

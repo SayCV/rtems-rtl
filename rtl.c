@@ -12,7 +12,7 @@
  *
  * @brief RTEMS Run-Time Link Editor
  *
- * This is the RTL implementation. 
+ * This is the RTL implementation.
  */
 
 #if HAVE_CONFIG_H
@@ -36,7 +36,7 @@
  */
 #define RTEMS_MUTEX_ATTRIBS \
   (RTEMS_PRIORITY | RTEMS_BINARY_SEMAPHORE | \
-   RTEMS_INHERIT_PRIORITY | RTEMS_NO_PRIORITY_CEILING | RTEMS_LOCAL) 
+   RTEMS_INHERIT_PRIORITY | RTEMS_NO_PRIORITY_CEILING | RTEMS_LOCAL)
 
 /**
  * Symbol table cache size. They can be big so the cache needs space to work.
@@ -73,7 +73,7 @@ rtems_rtl_base_global_syms_init (void)
 
 static bool
 rtems_rtl_data_init (void)
-{  
+{
   /*
    * Lock the RTL. We only create a lock if a call is made. First we test if a
    * lock is present. If one is present we lock it. If not the libio lock is
@@ -83,7 +83,7 @@ rtems_rtl_data_init (void)
   if (!rtl)
   {
     rtems_libio_lock ();
-    
+
     if (!rtl)
     {
       rtems_status_code sc;
@@ -125,9 +125,9 @@ rtems_rtl_data_init (void)
         free (rtl);
         return false;
       }
-      
+
       rtl->lock = lock;
-      
+
       /*
        * Initialise the objects list and create any required services.
        */
@@ -141,19 +141,30 @@ rtems_rtl_data_init (void)
         return false;
       }
 
-      if (!rtems_rtl_obj_cache_open (&rtl->symbols,
-                                     RTEMS_RTL_ELF_SYMBOL_CACHE))
+      if (!rtems_rtl_unresolved_table_open (&rtl->unresolved,
+                                            RTEMS_RTL_UNRESOLVED_BLOCK_SIZE))
       {
         rtems_rtl_symbol_table_close (&rtl->globals);
         rtems_semaphore_delete (lock);
         free (rtl);
         return false;
       }
-      
+
+      if (!rtems_rtl_obj_cache_open (&rtl->symbols,
+                                     RTEMS_RTL_ELF_SYMBOL_CACHE))
+      {
+        rtems_rtl_symbol_table_close (&rtl->globals);
+        rtems_rtl_unresolved_table_close (&rtl->unresolved);
+        rtems_semaphore_delete (lock);
+        free (rtl);
+        return false;
+      }
+
       if (!rtems_rtl_obj_cache_open (&rtl->strings,
                                      RTEMS_RTL_ELF_STRING_CACHE))
       {
         rtems_rtl_obj_cache_close (&rtl->symbols);
+        rtems_rtl_unresolved_table_close (&rtl->unresolved);
         rtems_rtl_symbol_table_close (&rtl->globals);
         rtems_semaphore_delete (lock);
         free (rtl);
@@ -165,18 +176,20 @@ rtems_rtl_data_init (void)
       {
         rtems_rtl_obj_cache_close (&rtl->strings);
         rtems_rtl_obj_cache_close (&rtl->symbols);
+        rtems_rtl_unresolved_table_close (&rtl->unresolved);
         rtems_rtl_symbol_table_close (&rtl->globals);
         rtems_semaphore_delete (lock);
         free (rtl);
         return false;
       }
-      
+
       rtl->base = rtems_rtl_obj_alloc ();
       if (!rtl->base)
       {
         rtems_rtl_obj_cache_close (&rtl->relocs);
         rtems_rtl_obj_cache_close (&rtl->strings);
         rtems_rtl_obj_cache_close (&rtl->symbols);
+        rtems_rtl_unresolved_table_close (&rtl->unresolved);
         rtems_rtl_symbol_table_close (&rtl->globals);
         rtems_semaphore_delete (lock);
         free (rtl);
@@ -190,7 +203,7 @@ rtems_rtl_data_init (void)
 
       rtems_chain_append (&rtl->objects, &rtl->base->link);
     }
-    
+
     rtems_libio_unlock ();
 
     rtems_rtl_path_append (".");
@@ -214,6 +227,14 @@ rtems_rtl_global_symbols (void)
   if (!rtl)
     return NULL;
   return &rtl->globals;
+}
+
+rtems_rtl_unresolved_t*
+rtems_rtl_unresolved (void)
+{
+  if (!rtl)
+    return NULL;
+  return &rtl->unresolved;
 }
 
 void
@@ -360,18 +381,26 @@ rtems_rtl_load_object (const char* name, int mode)
     }
 
     rtems_chain_append (&rtl->objects, &obj->link);
-  
+
     if (!rtems_rtl_obj_load (obj))
     {
       rtems_rtl_obj_free (obj);
       return NULL;
     }
+
+    rtems_rtl_unresolved_resolve ();
   }
 
   /*
    * Increase the number of users.
    */
   ++obj->users;
+
+  /*
+   * FIXME: Resolving exsiting unresolved symbols could add more constructors
+   *        lists that need to be called. Make a list in the obj load layer and
+   *        invoke the list here.
+   */
 
   /*
    * Run any local constructors if this is the first user because the object
@@ -395,7 +424,7 @@ bool
 rtems_rtl_unload_object (rtems_rtl_obj_t* obj)
 {
   bool ok = true;
-  
+
   if (rtems_rtl_trace (RTEMS_RTL_TRACE_UNLOAD))
     printf ("rtl: unloading '%s'\n", rtems_rtl_obj_fname (obj));
 
@@ -407,7 +436,7 @@ rtems_rtl_unload_object (rtems_rtl_obj_t* obj)
     rtems_rtl_set_error (EINVAL, "cannot unload when locked");
     return false;
   }
-  
+
   /*
    * Check the number of users in a safe manner. If this is the last user unload the
    * object file from memory.
@@ -425,7 +454,7 @@ rtems_rtl_unload_object (rtems_rtl_obj_t* obj)
 
     ok = rtems_rtl_obj_unload (obj);
   }
-  
+
   return ok;
 }
 
@@ -442,19 +471,19 @@ rtems_rtl_path_update (bool prepend, const char* path)
   const char* src = NULL;
   char*       dst;
   int         len;
-  
+
   if (!rtems_rtl_lock ())
     return false;
 
   len = strlen (path);
-  
+
   if (rtl->paths)
     len += strlen (rtl->paths) + 1;
   else
     prepend = true;
-  
+
   paths = rtems_rtl_alloc_new (RTEMS_RTL_ALLOC_OBJECT, len + 1, false);
-  
+
   if (!paths)
   {
     rtems_rtl_unlock ();
@@ -462,7 +491,7 @@ rtems_rtl_path_update (bool prepend, const char* path)
   }
 
   dst = paths;
-  
+
   if (prepend)
   {
     len = strlen (path);
@@ -477,7 +506,7 @@ rtems_rtl_path_update (bool prepend, const char* path)
   memcpy (dst, src, len);
 
   dst += len;
-  
+
   if (rtl->paths)
   {
     *dst = ':';
@@ -501,11 +530,11 @@ rtems_rtl_path_update (bool prepend, const char* path)
     memcpy (dst, src, len);
     dst += len;
   }
-  
+
   *dst = '\0';
 
   rtl->paths = paths;
-  
+
   rtems_rtl_unlock ();
   return false;
 }
@@ -528,15 +557,15 @@ rtems_rtl_base_sym_global_add (const unsigned char* esyms,
 {
   if (rtems_rtl_trace (RTEMS_RTL_TRACE_GLOBAL_SYM))
     printf ("rtl: adding global symbols, table size %u\n", size);
-  
+
   if (!rtems_rtl_lock ())
   {
     rtems_rtl_set_error (EINVAL, "global add cannot lock rtl");
     return;
   }
-  
+
   rtems_rtl_symbol_global_add (rtl->base, esyms, size);
-    
+
   rtems_rtl_unlock ();
 }
 

@@ -45,6 +45,7 @@ typedef uint32_t rtems_rtl_trace_mask;
 #define RTEMS_RTL_TRACE_GLOBAL_SYM             (1UL << 5)
 #define RTEMS_RTL_TRACE_LOAD_SECT              (1UL << 6)
 #define RTEMS_RTL_TRACE_ALLOCATOR              (1UL << 7)
+#define RTEMS_RTL_TRACE_UNRESOLVED             (1UL << 8)
 
 /**
  * Call to check if this part is bring traced. If RTEMS_RTL_TRACE is defined to

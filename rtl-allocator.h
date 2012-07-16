@@ -28,7 +28,7 @@ extern "C" {
  * Define the types of allocation the loader requires.
  *
  * @note It is best to use the object tag for general memory allocation and to
- *       leave the tags with specific access properties to the module data  
+ *       leave the tags with specific access properties to the module data
  */
 enum rtems_rtl_alloc_tags_e {
   RTEMS_RTL_ALLOC_OBJECT,     /**< A generic memory object. */
@@ -96,7 +96,7 @@ void rtems_rtl_alloc_initialise (rtems_rtl_alloc_data_t* data);
  * @param zero If true the memory is cleared.
  * @return void* The memory address or NULL is not memory available.
  */
-void* rtems_rtl_alloc_new(rtems_rtl_alloc_tag_t tag, size_t size, bool zero);
+void* rtems_rtl_alloc_new (rtems_rtl_alloc_tag_t tag, size_t size, bool zero);
 
 /**
  * The Runtime Loader allocator delete deletes allocated memory.
@@ -104,7 +104,7 @@ void* rtems_rtl_alloc_new(rtems_rtl_alloc_tag_t tag, size_t size, bool zero);
  * @param tag The type of allocation request.
  * @param address The memory address to delete. A NULL is ignored.
  */
-void rtems_rtl_alloc_del(rtems_rtl_alloc_tag_t tag, void* address);
+void rtems_rtl_alloc_del (rtems_rtl_alloc_tag_t tag, void* address);
 
 /**
  * Hook the Runtime Loader allocatior. A handler can call the previous handler
@@ -115,7 +115,7 @@ void rtems_rtl_alloc_del(rtems_rtl_alloc_tag_t tag, void* address);
  * @param handler The handler to use as the allocator.
  * @return rtems_rtl_alloc_handler_t The previous handler.
  */
-rtems_rtl_allocator_t rtems_rtl_alloc_hook(rtems_rtl_allocator_t handler);
+rtems_rtl_allocator_t rtems_rtl_alloc_hook (rtems_rtl_allocator_t handler);
 
 /**
  * Allocate memory to an indirect handle.

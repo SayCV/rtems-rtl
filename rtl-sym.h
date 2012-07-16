@@ -107,11 +107,18 @@ rtems_rtl_obj_sym_t* rtems_rtl_symbol_obj_find (rtems_rtl_obj_t* obj,
                                                 const char*      name);
 
 /**
+ * Add the object file's symbols to the global table.
+ *
+ * @param obj The object file the symbols are to be added.
+ */
+void rtems_rtl_symbol_obj_add (rtems_rtl_obj_t* obj);
+
+/**
  * Erase the object file's symbols.
  *
  * @param obj The object file the symbols are to be erased from.
  */
-void rtems_rtl_obj_symbol_erase (rtems_rtl_obj_t* obj);
+void rtems_rtl_symbol_obj_erase (rtems_rtl_obj_t* obj);
 
 #ifdef __cplusplus
 }

@@ -74,7 +74,7 @@ bool rtems_rtl_elf_rel_resolve_sym (Elf_Word type);
  * @param sect The section of the object file the relocation is for.
  * @param symvalue If a symbol is referenced, this is the symbols value.
  * @retval bool The relocation has been applied.
- * @retval bool The relocation could not be applied. 
+ * @retval bool The relocation could not be applied.
  */
 bool rtems_rtl_elf_relocate_rel (rtems_rtl_obj_t*      obj,
                                  const Elf_Rel*        rel,
@@ -91,7 +91,7 @@ bool rtems_rtl_elf_relocate_rel (rtems_rtl_obj_t*      obj,
  * @param sect The section of the object file the relocation is for.
  * @param symvalue If a symbol is referenced, this is the symbols value.
  * @retval bool The relocation has been applied.
- * @retval bool The relocation could not be applied. 
+ * @retval bool The relocation could not be applied.
  */
 bool rtems_rtl_elf_relocate_rela (rtems_rtl_obj_t*      obj,
                                   const Elf_Rela*       rela,

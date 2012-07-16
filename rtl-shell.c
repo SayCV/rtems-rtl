@@ -94,7 +94,7 @@ rtems_rtl_shell_status (rtems_rtl_data_t* rtl, int argc, char *argv[])
 {
   rtems_rtl_obj_summary_t summary;
   size_t                  total_memory;
-  
+
   summary.count   = 0;
   summary.exec    = 0;
   summary.symbols = 0;
@@ -107,7 +107,7 @@ rtems_rtl_shell_status (rtems_rtl_data_t* rtl, int argc, char *argv[])
   total_memory =
     sizeof (*rtl) + (summary.count * sizeof (rtems_rtl_obj_t)) +
     summary.exec + summary.symbols;
-  
+
   printf ("Runtime Linker Status:\n");
   printf ("        paths: %s\n", rtl->paths);
   printf ("      objects: %d\n", summary.count);
@@ -115,7 +115,7 @@ rtems_rtl_shell_status (rtems_rtl_data_t* rtl, int argc, char *argv[])
   printf ("  exec memory: %zi\n", summary.exec);
   printf ("   sym memory: %zi\n", summary.symbols);
   printf ("      symbols: %d\n", rtems_rtl_count_symbols (rtl));
-  
+
   return 0;
 }
 
@@ -126,6 +126,7 @@ typedef struct
 {
   rtems_rtl_data_t* rtl; /**< The RTL data. */
   int  indent;           /**< Spaces to indent. */
+  bool oname;            /**< Print object names. */
   bool names;            /**< Print details of all names. */
   bool memory_map;       /**< Print the memory map. */
   bool symbols;          /**< Print the global symbols. */
@@ -144,23 +145,37 @@ rtems_rtl_delta_voids (void* higher, void* lower)
 }
 
 /**
- * Object print iterator.
+ * See if -b for base is set.
  */
 static bool
-rtems_rtl_obj_print_iterator (rtems_chain_node* node, void* data)
+rtems_rtl_base_arg (int argc, char *argv[])
 {
-  rtems_rtl_obj_print_t* print = data;
-  rtems_rtl_obj_t*       obj = (rtems_rtl_obj_t*) node;
-  char                   flags_str[33];
+  int arg;
+  for (arg = 0; arg < argc; ++arg)
+    if (strncmp ("-b", argv[arg], 2) == 0)
+      return true;
+  return false;
+}
+
+/**
+ * Object printer.
+ */
+static bool
+rtems_rtl_obj_printer (rtems_rtl_obj_print_t* print, rtems_rtl_obj_t* obj)
+{
+  char flags_str[33];
 
   /*
    * Skip the base module unless asked to show it.
    */
   if (!print->base && (obj == print->rtl->base))
       return true;
-      
-  printf ("%-*cobject name   : %s\n",
-          print->indent, ' ', rtems_rtl_obj_oname (obj));
+
+  if (print->oname)
+  {
+    printf ("%-*cobject name   : %s\n",
+            print->indent, ' ', rtems_rtl_obj_oname (obj));
+  }
   if (print->names)
   {
     printf ("%-*cfile name     : %s\n",
@@ -176,9 +191,9 @@ rtems_rtl_obj_print_iterator (rtems_chain_node* node, void* data)
     printf ("%-*cfile offset   : %" PRIdoff_t "\n", print->indent, ' ', obj->ooffset);
     printf ("%-*cfile size     : %zi\n", print->indent, ' ', obj->fsize);
   }
-  printf ("%-*cexec size     : %zi\n", print->indent, ' ', obj->exec_size);
   if (print->memory_map)
   {
+    printf ("%-*cexec size     : %zi\n", print->indent, ' ', obj->exec_size);
     printf ("%-*ctext base     : %p (%zi)\n", print->indent, ' ',
             obj->text_base, rtems_rtl_delta_voids (obj->const_base, obj->text_base));
     printf ("%-*cconst base    : %p (%zi)\n", print->indent, ' ',
@@ -188,6 +203,7 @@ rtems_rtl_obj_print_iterator (rtems_chain_node* node, void* data)
     printf ("%-*cbss base      : %p (%zi)\n", print->indent, ' ',
             obj->bss_base, obj->bss_size);
   }
+  printf ("%-*cunresolved    : %lu\n", print->indent, ' ', obj->unresolved);
   printf ("%-*csymbols       : %zi\n", print->indent, ' ', obj->global_syms);
   printf ("%-*csymbol memory : %zi\n", print->indent, ' ', obj->global_size);
   if (print->symbols)
@@ -204,7 +220,32 @@ rtems_rtl_obj_print_iterator (rtems_chain_node* node, void* data)
       printf ("%-*c%-*s = %p\n", print->indent + 2, ' ',
               max_len, obj->global_table[s].name, obj->global_table[s].value);
   }
+  printf ("\n");
   return true;
+}
+
+/**
+ * Object unresolved symbols printer.
+ */
+static bool
+rtems_rtl_unresolved_printer (rtems_rtl_unresolv_rec_t* rec,
+                              void*                     data)
+{
+  rtems_rtl_obj_print_t* print = (rtems_rtl_obj_print_t*) data;
+  if (rec->type == rtems_rtl_unresolved_name)
+    printf ("%-*c%s\n", print->indent + 2, ' ', rec->rec.name.name);
+  return false;
+}
+
+/**
+ * Object print iterator.
+ */
+static bool
+rtems_rtl_obj_print_iterator (rtems_chain_node* node, void* data)
+{
+  rtems_rtl_obj_print_t* print = data;
+  rtems_rtl_obj_t*       obj = (rtems_rtl_obj_t*) node;
+  return rtems_rtl_obj_printer (print, obj);
 }
 
 static int
@@ -213,6 +254,7 @@ rtems_rtl_shell_list (rtems_rtl_data_t* rtl, int argc, char *argv[])
   rtems_rtl_obj_print_t print;
   print.rtl = rtl;
   print.indent = 1;
+  print.oname = true;
   print.names = true;
   print.memory_map = true;
   print.symbols = true;
@@ -226,6 +268,22 @@ rtems_rtl_shell_list (rtems_rtl_data_t* rtl, int argc, char *argv[])
 static int
 rtems_rtl_shell_sym (rtems_rtl_data_t* rtl, int argc, char *argv[])
 {
+  rtems_rtl_obj_print_t print;
+
+
+
+  print.rtl = rtl;
+  print.indent = 1;
+  print.oname = true;
+  print.names = false;
+  print.memory_map = false;
+  print.symbols = true;
+  print.base = rtems_rtl_base_arg (argc, argv);
+  rtems_rtl_chain_iterate (&rtl->objects,
+                           rtems_rtl_obj_print_iterator,
+                           &print);
+  printf ("Unresolved:\n");
+  rtems_rtl_unresolved_interate (rtems_rtl_unresolved_printer, &print);
   return 0;
 }
 
@@ -263,7 +321,7 @@ rtems_rtl_shell_command (int argc, char* argv[])
 
   int arg;
   int t;
-  
+
   for (arg = 1; arg < argc; arg++)
   {
     if (argv[arg][0] != '-')
@@ -311,6 +369,6 @@ rtems_rtl_shell_command (int argc, char* argv[])
     }
     printf ("error: command not found: %s (try -h)\n", argv[arg]);
   }
-  
+
   return 1;
 }

@@ -60,7 +60,9 @@ bool
 rtems_rtl_symbol_table_open (rtems_rtl_symbols_t* symbols,
                              size_t               buckets)
 {
-  symbols->buckets = calloc (buckets, sizeof (rtems_chain_control));
+  symbols->buckets = rtems_rtl_alloc_new (RTEMS_RTL_ALLOC_SYMBOL,
+                                          buckets * sizeof (rtems_chain_control),
+                                          true);
   if (!symbols->buckets)
   {
     rtems_rtl_set_error (ENOMEM, "no memory for global symbol table");
@@ -76,7 +78,7 @@ rtems_rtl_symbol_table_open (rtems_rtl_symbols_t* symbols,
 void
 rtems_rtl_symbol_table_close (rtems_rtl_symbols_t* symbols)
 {
-  free (symbols->buckets);
+  rtems_rtl_alloc_del (RTEMS_RTL_ALLOC_SYMBOL, symbols->buckets);
 }
 
 bool
@@ -123,7 +125,7 @@ rtems_rtl_symbol_global_add (rtems_rtl_obj_t*     obj,
 
   if (rtems_rtl_trace (RTEMS_RTL_TRACE_GLOBAL_SYM))
     printf ("rtl: global symbol add: %zi\n", count);
-  
+
   obj->global_size = count * sizeof (rtems_rtl_obj_sym_t);
   obj->global_table = rtems_rtl_alloc_new (RTEMS_RTL_ALLOC_SYMBOL,
                                            obj->global_size, true);
@@ -133,7 +135,7 @@ rtems_rtl_symbol_global_add (rtems_rtl_obj_t*     obj,
     rtems_rtl_set_error (ENOMEM, "no memory for global symbols");
     return false;
   }
-  
+
   symbols = rtems_rtl_global_symbols ();
 
   s = 0;
@@ -151,7 +153,7 @@ rtems_rtl_symbol_global_add (rtems_rtl_obj_t*     obj,
       void*   value;
     } copy_voidp;
     int b;
-    
+
     sym->name = (const char*) &esyms[s];
     s += strlen (sym->name) + 1;
     for (b = 0; b < sizeof (void*); ++b, ++s)
@@ -187,13 +189,13 @@ rtems_rtl_symbol_global_find (const char* name)
   {
     rtems_rtl_obj_sym_t* sym = (rtems_rtl_obj_sym_t*) node;
     /*
-     * Use the hash. I could add this to the symbol but it uses more memory..
+     * Use the hash. I could add this to the symbol but it uses more memory.
      */
     if (strcmp (name, sym->name) == 0)
       return sym;
     node = rtems_chain_next (node);
   }
-  
+
   return NULL;
 }
 
@@ -213,7 +215,20 @@ rtems_rtl_symbol_obj_find (rtems_rtl_obj_t* obj, const char* name)
 }
 
 void
-rtems_rtl_obj_symbol_erase (rtems_rtl_obj_t* obj)
+rtems_rtl_symbol_obj_add (rtems_rtl_obj_t* obj)
+{
+  rtems_rtl_symbols_t* symbols;
+  rtems_rtl_obj_sym_t* sym;
+  size_t               s;
+
+  symbols = rtems_rtl_global_symbols ();
+
+  for (s = 0, sym = obj->global_table; s < obj->global_syms; ++s, ++sym)
+    rtems_rtl_symbol_global_insert (symbols, sym);
+}
+
+void
+rtems_rtl_symbol_obj_erase (rtems_rtl_obj_t* obj)
 {
   if (obj->global_table)
   {

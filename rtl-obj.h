@@ -18,8 +18,8 @@
 
 #include <rtems.h>
 #include <rtems/chain.h>
-#include <rtl-indirect-ptr.h>
 #include <rtl-sym.h>
+#include <rtl-unresolved.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -96,6 +96,8 @@ struct rtems_rtl_obj_s
   rtems_rtl_obj_sym_t* global_table; /**< Global symbol table. */
   size_t               global_syms;  /**< Global symbol count. */
   size_t               global_size;  /**< Global symbol memory usage. */
+  rtems_chain_control  externals;    /**< Unresolved externals. */
+  uint32_t             unresolved;   /**< The number of unresolved relocations. */
   void*                text_base;    /**< The base address of the text section
                                       * in memory. */
   void*                const_base;   /**< The base address of the const section
@@ -265,7 +267,7 @@ bool rtems_rtl_obj_find_file (rtems_rtl_obj_t* obj, const char* name);
  * @param info The section's info field (from the ELF format).
  * @param flags The section's flags.
  * @retval true The section has been added.
- * @retval false The section has not been added. See the RTL error. 
+ * @retval false The section has not been added. See the RTL error.
  */
 bool rtems_rtl_obj_add_section (rtems_rtl_obj_t* obj,
                                 int              section,
@@ -384,7 +386,7 @@ uint32_t rtems_rtl_obj_data_alignment (rtems_rtl_obj_t* obj);
  * @return size_t The size of the bss area of the object file.
  */
 size_t rtems_rtl_obj_bss_size (rtems_rtl_obj_t* obj);
-  
+
 /**
  * The bss section alignment of the object file. Only use once all the
  * sections has been added. The section alignment is the alignment of the first
@@ -413,6 +415,17 @@ bool rtems_rtl_obj_relocate (rtems_rtl_obj_t*             obj,
                              int                          fd,
                              rtems_rtl_obj_sect_handler_t handler,
                              void*                        data);
+
+/**
+ * Relocate an object file's unresolved reference.
+ *
+ * @param rec The unresolved relocation record.
+ * @param sym The unresolved relocation's referenced symbol.
+ * @retval true The object file record was relocated.
+ * @retval false The relocation failed. The RTL error is set.
+ */
+bool rtems_rtl_obj_relocate_unresolved (rtems_rtl_unresolv_reloc_t* reloc,
+                                        rtems_rtl_obj_sym_t*        sym);
 
 /**
  * Load the symbols from the object file. Only the exported or public symbols

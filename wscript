@@ -17,6 +17,9 @@ def configure(conf):
     conf.env.ASCIIDOC = conf.find_program(['asciidoc.py'], mandatory = False)
     conf.env.ASCIIDOC_FLAGS = ['-b', 'html5', '-a', 'data-uri', '-a', 'icons', '-a', 'max-width=55em-a']
 
+    # hack on at the moment.
+    conf.env.GSYM_EMBEDDED = True
+
 def build(bld):
     bld.add_post_fun(rtl_post_build)
 
@@ -24,9 +27,13 @@ def build(bld):
 
     arch = bld.get_env()['RTEMS_ARCH']
 
-    bld.includes = ['.', 
+    bld.includes = ['.',
                     'libbsd/include',
                     'libbsd/include/arch/' + arch]
+
+    bld.defines = ['PACKAGE_VERSION="' + version + '"']
+    if bld.env.GSYM_EMBEDDED:
+        bld.defines += ['RTL_GSYM_EMBEDDED=1']
 
     rtl_source(bld, arch)
     rtl_liba(bld, arch)
@@ -39,7 +46,7 @@ def build(bld):
                   'main.c',
                   'fs-root-tarfile.o'],
         includes = bld.includes,
-        defines = ['PACKAGE_VERSION="' + version + '"'],
+        defines = bld.defines,
         use = ['rtl', 'rootfs', 'rtld-gsyms'],
         depends_on = 'gsyms')
 
@@ -72,15 +79,17 @@ def rtl_source(bld, arch):
                   'rtl-string.c',
                   'rtl-sym.c',
                   'rtl-trace.c',
+                  'rtl-unresolved.c',
                   'rtl-mdreloc-' + arch + '.c'])
 
 def rtl_liba(bld, arch):
     bld(target = 'x',
         features = 'c cstlib',
         includes = bld.includes,
+        defines = bld.defines,
         source = ['xa.c',
                   'x-long-name-to-create-gnu-extension-in-archive.c'])
-        
+
 def mmap_source(bld, includes):
     bld(target = 'mmap',
         features = 'c',
@@ -111,35 +120,20 @@ def rtl_gsyms(bld):
             import os
             sb = os.stat(src)
             if sb.st_size == 0:
+                if bld.env.GSYM_EMBEDDED:
+                    flags = '--embed'
+                else:
+                    flags = ''
                 bld(name = 'gsyms',
                     target = 'gsyms.c',
                     always = True,
-                    rule = '${NM} -g rtld | awk -f ../../mksyms.awk - > ${TGT}')
+                    rule = '${NM} -g rtld | awk -f ../../mksyms.awk - ' + flags + ' > ${TGT}')
     else:
         open(src, 'a').close()
     bld(target = 'rtld-gsyms',
         features = 'c',
         includes = bld.includes,
-        source = ['rtld-gsyms.c'],
-        depends_on = 'gsyms')
-
-def x_rtl_gsyms(bld):
-    import os.path
-    src = os.path.join(bld.get_variant_dir(), 'gsyms.c')
-    if os.path.exists(src):
-        if os.path.exists(os.path.join(bld.get_variant_dir(), 'rtld')):
-            import os
-            sb = os.stat(src)
-            if sb.st_size == 0:
-                bld(name = 'gsyms',
-                    target = 'gsyms.c',
-                    always = True,
-                    rule = '${NM} -g rtld | awk -f ../../mksyms.awk - > ${TGT}')
-    else:
-        open(src, 'a').close()
-    bld(target = 'rtld-gsyms',
-        features = 'c',
-        includes = bld.includes,
+        defines = bld.defines,
         source = ['rtld-gsyms.c'],
         depends_on = 'gsyms')
 

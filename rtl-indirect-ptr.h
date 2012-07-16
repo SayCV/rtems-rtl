@@ -44,6 +44,32 @@ struct rtems_rtl_sptr_s {
 typedef struct rtems_rtl_sptr_s rtems_rtl_sptr_t;
 
 /**
+ * A chain of indirect pointers for users to chain in applications.
+ *
+ * @note The chain the pointer is on is internal to the allocator and cannot be
+ *       used by applications.
+ */
+struct rtems_rtl_ptr_chain_s {
+  rtems_chain_node node;  /**< Chain of indirect pointers. */
+  rtems_rtl_ptr_t  ptr;   /**< The indirect pointer. */
+};
+
+typedef struct rtems_rtl_ptr_chain_s rtems_rtl_ptr_chain_t;
+
+/**
+ * A chain of indirect sized pointers for users to chain in applications.
+ *
+ * @note The chain the pointer is on is internal to the allocator and cannot be
+ *       used by applications.
+ */
+struct rtems_rtl_sptr_chain_s {
+  rtems_chain_node node;  /**< Chain of indirect pointers. */
+  rtems_rtl_sptr_t  ptr;  /**< The indirect pointer. */
+};
+
+typedef struct rtems_rtl_sptr_chain_s rtems_rtl_sptr_chain_t;
+
+/**
  * Get the pointer given an indirect handle.
  *
  * @param handle The handle the pointer is returned from.

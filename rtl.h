@@ -22,13 +22,11 @@
 #include <rtems.h>
 #include <rtems/chain.h>
 
-// #include <rtems/rtl/rtl-elf.h>
-
 #include <rtl-allocator.h>
 #include <rtl-fwd.h>
-#include <rtl-elf.h>
 #include <rtl-obj.h>
 #include <rtl-obj-cache.h>
+#include <rtl-unresolved.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -48,11 +46,16 @@ extern "C" {
  * files or in an archive. Object files in an archive are referenced by
  * specifing 'archive:object' format. For example 'libfoo.a:bar.o'.
  */
-  
+
 /**
  * The number of buckets in the global symbol table.
  */
 #define RTEMS_RTL_SYMS_GLOBAL_BUCKETS (32)
+
+/**
+ * The number of relocation record per block in the unresolved table.
+ */
+#define RTEMS_RTL_UNRESOLVED_BLOCK_SIZE (64)
 
 /**
  * The global debugger interface variable.
@@ -69,7 +72,7 @@ extern void _rtld_debug_state (void);
  * The type of constructor/destructor function.
  */
 typedef void (*rtems_rtl_cdtor_t)(void);
-  
+
 /**
  * The global RTL data. This structure is allocated on the heap when the first
  * call to the RTL is made and never released.
@@ -85,6 +88,7 @@ struct rtems_rtl_data_s
   rtems_chain_control    objects;        /**< List if loaded object files. */
   const char*            paths;          /**< Search paths for archives. */
   rtems_rtl_symbols_t    globals;        /**< Global symbol table. */
+  rtems_rtl_unresolved_t unresolved;     /**< Unresolved symbols. */
   rtems_rtl_obj_t*       base;           /**< Base object file. */
   rtems_rtl_obj_cache_t  symbols;        /**< Symbols object file cache. */
   rtems_rtl_obj_cache_t  strings;        /**< Strings object file cache. */
@@ -109,6 +113,15 @@ rtems_rtl_data_t* rtems_rtl_data (void);
  * @retval NULL The RTL data is not initialised.
  */
 rtems_rtl_symbols_t* rtems_rtl_global_symbols (void);
+
+/**
+ * Get the RTL resolved table with out locking. This call assmes the RTL
+ * is locked.
+ *
+ * @return rtems_rtl_unresolv_t* The RTL unresolved symbols and reloc records.
+ * @retval NULL The RTL data is not initialised.
+ */
+rtems_rtl_unresolved_t* rtems_rtl_unresolved (void);
 
 /**
  * Get the RTL symbols, strings, or relocations object file caches. This call
@@ -171,21 +184,24 @@ rtems_rtl_obj_t* rtems_rtl_find_obj (const char* name);
  * Load an object file into memory relocating it. It will not be resolved
  * against other symbols in other object files or the base image.
  *
- * The name can be a file name for an ELF object file or it can be encoded to
+ * The name can be a file name for an object file or it can be encoded to
  * reference an archive of object modules (static library). This encoding is
  * specific to RTEMS and allows dependences to specify an archive without the
  * searching overhead normally incurred by linkers locating object files in an
  * archive. The file name format rules are:
  *
- *  1. Absolute file references a specific ELF format file in that specific
- *     location on the file system.
- *  2. Relative file references an ELF format file in the search path.
+ *  1. Absolute file references a specific object file in the architecture
+ *     specific location on the file system.
+ *
+ *  2. Relative file references an object format file in the search path.
+ *
  *  3. Absolute archive and file reference to a specific location in the file
  *     system. The archive and file are encoded as 'archive:file [@offset]'
  *     where 'archive' is a valid file at the absolute path in the file system,
  *     and 'file' is a contained in the archive, and optionally an offset to
  *     the 'file' in the 'archive'. If no offset is provided the archive is
  *     searched.
+ *
  *  4. Relative archive and file in the search path. The encoding is the same
  *     as described in item 3 of this list.
  *
@@ -215,7 +231,7 @@ bool rtems_rtl_unload_object (rtems_rtl_obj_t* obj);
  * @param obj The object file.
  */
 void rtems_rtl_run_ctors (rtems_rtl_obj_t* obj);
-  
+
 /**
  * Get the last error message clearing it. This operation locks the run time
  * linker and therefore keeps the RTL thread safe.
