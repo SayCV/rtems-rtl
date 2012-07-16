@@ -96,7 +96,6 @@ struct rtems_rtl_obj_s
   rtems_rtl_obj_sym_t* global_table; /**< Global symbol table. */
   size_t               global_syms;  /**< Global symbol count. */
   size_t               global_size;  /**< Global symbol memory usage. */
-  rtems_chain_control  externals;    /**< Unresolved externals. */
   uint32_t             unresolved;   /**< The number of unresolved relocations. */
   void*                text_base;    /**< The base address of the text section
                                       * in memory. */
