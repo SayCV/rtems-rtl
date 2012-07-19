@@ -47,6 +47,7 @@ def build(bld):
                   'fs-root-tarfile.o'],
         includes = bld.includes,
         defines = bld.defines,
+        cflags = '-g',
         use = ['rtl', 'rootfs', 'rtld-gsyms'],
         depends_on = 'gsyms')
 
@@ -64,6 +65,7 @@ def rtl_source(bld, arch):
     bld(target = 'rtl',
         features = 'c',
         includes = bld.includes,
+        cflags = '-g',
         source = ['dlfcn.c',
                   'dlfcn-shell.c',
                   'rtl.c',
