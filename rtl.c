@@ -225,7 +225,10 @@ rtems_rtl_symbols_t*
 rtems_rtl_global_symbols (void)
 {
   if (!rtl)
+  {
+    rtems_rtl_set_error (ENOENT, "no rtl");
     return NULL;
+  }
   return &rtl->globals;
 }
 
@@ -233,7 +236,10 @@ rtems_rtl_unresolved_t*
 rtems_rtl_unresolved (void)
 {
   if (!rtl)
+  {
+    rtems_rtl_set_error (ENOENT, "no rtl");
     return NULL;
+  }
   return &rtl->unresolved;
 }
 
