@@ -49,7 +49,7 @@ def init(ctx):
         #
         env = waflib.ConfigSet.ConfigSet()
         env.load(waflib.Options.lockfile)
-    
+
         #
         # Check the tools, architectures and bsps.
         #
@@ -71,7 +71,7 @@ def init(ctx):
                 class context(y):
                     cmd = name + '-' + x
                     variant = x
-    
+
         #
         # Add the various commands.
         #
@@ -104,8 +104,10 @@ def configure(conf):
 
     tools = _find_tools(conf, archs, rtems_tools)
 
+    env_clean = conf.env.copy()
+
     for ab in arch_bsps:
-        env = conf.env.copy()
+        env = env_clean
         env.set_variant(ab)
         conf.set_env_name(ab, env)
         conf.setenv(ab)
@@ -131,7 +133,7 @@ def configure(conf):
         conf.env.CFLAGS = flags['CFLAGS']
         conf.env.LINKFLAGS = flags['CFLAGS'] + flags['LDFLAGS']
         conf.env.LIB = flags['LIB']
-                                   
+
         #
         # Hack to work around NIOS2 naming.
         #
@@ -145,8 +147,8 @@ def configure(conf):
         conf.env.SHOW_COMMANDS = show_commands
 
     conf.setenv('')
-    
-    conf.env.RTEMS_TOOLS = rtems_tools    
+
+    conf.env.RTEMS_TOOLS = rtems_tools
     conf.env.ARCHS = archs
     conf.env.ARCH_BSPS = arch_bsps
 
@@ -222,13 +224,13 @@ def arch_bsp_env(ctx, arch_bsp):
 
 def clone_tasks(bld):
     if bld.cmd == 'build':
-        for obj in bld.all_task_gen[:]: 
+        for obj in bld.all_task_gen[:]:
             for x in arch_bsp:
-                cloned_obj = obj.clone(x) 
+                cloned_obj = obj.clone(x)
                 kind = Options.options.build_kind
                 if kind.find(x) < 0:
                     cloned_obj.posted = True
-            obj.posted = True 
+            obj.posted = True
 
 #
 # From the demos. Use this to get the command to cut+paste to play.
@@ -325,7 +327,7 @@ def _find_installed_arch_bsps(config, path, archs):
         ab = subprocess.check_output([config, '--list-format'])
         ab = ab[:-1].replace('"', '')
         ab = ab.replace('/', '-rtems4.11-')
-        arch_bsps = ab.split()
+        arch_bsps = set(ab.split())
     arch_bsps.sort()
     return arch_bsps
 
@@ -340,7 +342,7 @@ def _check_arch_bsps(req, path, archs):
 
 def _arch_from_arch_bsp(arch_bsp):
     return '-'.join(arch_bsp.split('-')[:2])
-    
+
 def _bsp_from_arch_bsp(arch_bsp):
     return '-'.join(arch_bsp.split('-')[2:])
 
@@ -379,7 +381,7 @@ def _load_flags_set(flags, arch_bsp, conf, config, pkg):
                       'LDFLAGS': '--ldflags',
                       'LIB': '--libs' }
         ab = arch_bsp.split('-')
-        #conf.check_cfg(path = config, 
+        #conf.check_cfg(path = config,
         #               package = '',
         #               uselib_store = 'rtems',
         #               args = '--bsp %s/%s %s' % (ab[0], ab[2], flags_map[flags]))
@@ -387,6 +389,11 @@ def _load_flags_set(flags, arch_bsp, conf, config, pkg):
         #print '%r' % conf
         #flagstr = '-l -c'
         flagstr = subprocess.check_output([config, '--bsp', '%s/%s' % (ab[0], ab[2]), flags_map[flags]])
+        #print flags, ">>>>", flagstr
+        if flags == 'CFLAGS':
+            flagstr += ' -DWAF_BUILD=1'
+        if flags == 'LIB':
+            flagstr = 'rtemscpu rtemsbsp c rtemscpu rtemsbsp'
     return flagstr.split()
 
 def _log_header(conf):
