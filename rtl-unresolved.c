@@ -40,6 +40,8 @@ rtems_rtl_unresolved_block_alloc (rtems_rtl_unresolved_t* unresolved)
     rtems_rtl_alloc_new (RTEMS_RTL_ALLOC_EXTERNAL, size, true);
   if (block)
     rtems_chain_append (&unresolved->blocks, &block->link);
+  else
+    rtems_rtl_set_error (ENOMEM, "no memory for unresolved block");
   return block;
 }
 
@@ -165,12 +167,13 @@ rtems_rtl_unresolved_resolve_reloc (rtems_rtl_unresolv_rec_t* rec,
     rtems_rtl_unresolved_reloc_data_t* rd;
     rd = (rtems_rtl_unresolved_reloc_data_t*) data;
 
-    if (rtems_rtl_trace (RTEMS_RTL_TRACE_UNRESOLVED))
-      printf ("rtl: unresolv: resolve reloc: %s\n", rd->name_rec->rec.name.name);
-
     if (rec->rec.reloc.name == rd->name)
     {
+      if (rtems_rtl_trace (RTEMS_RTL_TRACE_UNRESOLVED))
+        printf ("rtl: unresolv: resolve reloc: %s\n", rd->name_rec->rec.name.name);
+
       rtems_rtl_obj_relocate_unresolved (&rec->rec.reloc, rd->sym);
+
       /*
        * Set the object pointer to NULL to indicate the record is not used
        * anymore. Update the reference count of the name. The sweep after
@@ -370,6 +373,7 @@ rtems_rtl_unresolved_add (rtems_rtl_obj_t*        obj,
     block = (rtems_rtl_unresolv_block_t*) node;
     if (block->recs < unresolved->block_recs)
       break;
+    block = NULL;
     node = rtems_chain_next (node);
   }
 
@@ -386,9 +390,25 @@ rtems_rtl_unresolved_add (rtems_rtl_obj_t*        obj,
   name_index = rtems_rtl_unresolved_find_name (unresolved, name, true);
   name_recs = rtems_rtl_unresolved_name_recs (name);
 
-  if ((name_index < 0) && (name_recs < (unresolved->block_recs - block->recs)))
+  /*
+   * An index less than 0 means the name is present and "0 - index" is the next
+   * index to use.
+   */
+  if (name_index < 0)
   {
-    rec = rtems_rtl_unresolved_rec_first_free (block);
+    rtems_rtl_unresolv_block_t* name_block = block;
+
+    /*
+     * Is there enough room to fit the name ? It not add a new block.
+     */
+    if (name_recs > (unresolved->block_recs - block->recs))
+    {
+      name_block = rtems_rtl_unresolved_block_alloc (unresolved);
+      if (!name_block)
+        return false;
+    }
+
+    rec = rtems_rtl_unresolved_rec_first_free (name_block);
     rec->type = rtems_rtl_unresolved_name;
     rec->rec.name.refs = 1;
     rec->rec.name.length = strlen (name) + 1;
@@ -396,7 +416,11 @@ rtems_rtl_unresolved_add (rtems_rtl_obj_t*        obj,
     block->recs += name_recs;
     name_index = 0 - name_index;
 
-    if (block->recs >= unresolved->block_recs)
+    /*
+     * If the name block is the reloc block and it is full allocate a new
+     * block for the relocation record.
+     */
+    if ((block == name_block) && (block->recs >= unresolved->block_recs))
     {
       block = rtems_rtl_unresolved_block_alloc (unresolved);
       if (!block)
@@ -424,7 +448,7 @@ rtems_rtl_unresolved_resolve (void)
 {
   rtems_rtl_unresolved_reloc_data_t rd;
   if (rtems_rtl_trace (RTEMS_RTL_TRACE_UNRESOLVED))
-    printf ("rtl: unresolv: resolving\n");
+    printf ("rtl: unresolv: global resolve\n");
   rd.name = 0;
   rd.name_rec = NULL;
   rd.sym = NULL;
