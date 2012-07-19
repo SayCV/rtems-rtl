@@ -64,7 +64,9 @@ rtems_rtl_trace_shell_command (int argc, char *argv[])
     "symbol",
     "reloc",
     "global-sym",
-    "load-sect"
+    "load-sect",
+    "allocator",
+    "unresolved"
   };
 
   rtems_rtl_trace_mask set_value = 0;
@@ -72,7 +74,7 @@ rtems_rtl_trace_shell_command (int argc, char *argv[])
   bool                 set = true;
   int                  arg;
   int                  t;
-  
+
   for (arg = 1; arg < argc; arg++)
   {
     if (argv[arg][0] == '-')
