@@ -1,4 +1,4 @@
 #rtl-trace set all
-#rtl-trace set load load-sect reloc
+#rtl-trace set load load-sect symbol reloc unresolved
 dlo libx.a:xa.c.2.o
 dlo libx.a:x-long-name-to-create-gnu-extension-in-archive.c.2.o
