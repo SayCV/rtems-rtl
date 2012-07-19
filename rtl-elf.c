@@ -139,8 +139,6 @@ rtems_rtl_elf_relocator (rtems_rtl_obj_t*      obj,
              RTEMS_RTL_OBJ_SECT_RELA) ? true : false;
   reloc_size = is_rela ? sizeof (Elf_Rela) : sizeof (Elf_Rel);
 
-  obj->unresolved = 0;
-
   for (reloc = 0; reloc < (sect->size / reloc_size); ++reloc)
   {
     uint8_t         relbuf[reloc_size];
@@ -204,7 +202,6 @@ rtems_rtl_elf_relocator (rtems_rtl_obj_t*      obj,
         uint16_t         flags = 0;
         rtems_rtl_word_t rel_words[3];
 
-        ++obj->unresolved;
         relocate = false;
 
         if (is_rela)
@@ -226,8 +223,9 @@ rtems_rtl_elf_relocator (rtems_rtl_obj_t*      obj,
                                        symname,
                                        targetsect->section,
                                        rel_words))
-        {
-        }
+          return false;
+
+        ++obj->unresolved;
       }
     }
 
@@ -275,7 +273,10 @@ rtems_rtl_obj_relocate_unresolved (rtems_rtl_unresolv_reloc_t* reloc,
 
   sect = rtems_rtl_obj_find_section_by_index (reloc->obj, reloc->sect);
   if (!sect)
+  {
+    rtems_rtl_set_error (ENOEXEC, "unresolved sect not found");
     return false;
+  }
 
   symvalue = (Elf_Word) (intptr_t) sym->value;
   if (is_rela)
