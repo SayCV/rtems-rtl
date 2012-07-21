@@ -302,7 +302,7 @@ def _find_installed_archs(config, path, version):
         a = subprocess.check_output([config, '--list-format', '"%(arch)s"'])
         a = a[:-1].replace('"', '')
         archs = set(a.split())
-        archs = ['%s-rtems4.11' %(x) for x in archs]
+        archs = ['%s-rtems4.11' % (x) for x in archs]
     archs.sort()
     return archs
 
@@ -327,7 +327,7 @@ def _find_installed_arch_bsps(config, path, archs):
         ab = subprocess.check_output([config, '--list-format'])
         ab = ab[:-1].replace('"', '')
         ab = ab.replace('/', '-rtems4.11-')
-        arch_bsps = set(ab.split())
+        arch_bsps = [x for x in set(ab.split())]
     arch_bsps.sort()
     return arch_bsps
 
