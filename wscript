@@ -139,10 +139,10 @@ def rtl_gsyms(bld):
         source = ['rtld-gsyms.c'],
         depends_on = 'gsyms')
 
-import TaskGen
-TaskGen.declare_chain(name      = 'html',
-                      rule      = '${ASCIIDOC} ${ASCIIDOC_FLAGS} -o ${TGT} ${SRC}',
-                      shell     = False,
-                      ext_in    = '.txt',
-                      ext_out   = '.html',
-                      reentrant = False)
+import waflib.TaskGen
+waflib.TaskGen.declare_chain(name      = 'html',
+                             rule      = '${ASCIIDOC} ${ASCIIDOC_FLAGS} -o ${TGT} ${SRC}',
+                             shell     = False,
+                             ext_in    = '.txt',
+                             ext_out   = '.html',
+                             reentrant = False)

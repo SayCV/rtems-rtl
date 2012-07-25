@@ -104,13 +104,10 @@ def configure(conf):
 
     tools = _find_tools(conf, archs, rtems_tools)
 
-    env_clean = conf.env.copy()
+    env = conf.env
 
     for ab in arch_bsps:
-        env = env_clean
-        env.set_variant(ab)
-        conf.set_env_name(ab, env)
-        conf.setenv(ab)
+        conf.setenv(ab, env)
 
         arch = _arch_from_arch_bsp(ab)
 
@@ -146,7 +143,7 @@ def configure(conf):
 
         conf.env.SHOW_COMMANDS = show_commands
 
-    conf.setenv('')
+    conf.setenv('', env)
 
     conf.env.RTEMS_TOOLS = rtems_tools
     conf.env.ARCHS = archs
