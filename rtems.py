@@ -201,9 +201,12 @@ def check_options(ctx, rtems_tools, rtems_path, rtems_version, rtems_archs, rtem
     # to those referenced by the BSPs.
     #
     if rtems_bsps == 'all':
-        arch_bsps = _find_installed_arch_bsps(rtems_config, rtems_path, archs)
+        arch_bsps = _find_installed_arch_bsps(rtems_config, rtems_path, archs, rtems_version)
     else:
-        arch_bsps = _check_arch_bsps(rtems_config, rtems_bsps, rtems_path, archs)
+        arch_bsps = _check_arch_bsps(rtems_bsps, rtems_config, rtems_path, archs, rtems_version)
+
+    if len(arch_bsps) == 0:
+        ctx.fatal('No valid arch/bsps found')
 
     return tools, archs, arch_bsps
 
@@ -304,7 +307,7 @@ def _find_installed_archs(config, path, version):
     return archs
 
 def _check_archs(config, req, path, version):
-    installed = _find_all_archs(config, path, version)
+    installed = _find_installed_archs(config, path, version)
     archs = []
     for a in req.split(','):
         arch = a + '-rtems' + version
@@ -313,7 +316,7 @@ def _check_archs(config, req, path, version):
     archs.sort()
     return archs
 
-def _find_installed_arch_bsps(config, path, archs):
+def _find_installed_arch_bsps(config, path, archs, version):
     arch_bsps = []
     if config is None:
         for f in os.listdir(_pkgconfig_path(path)):
@@ -323,15 +326,31 @@ def _find_installed_arch_bsps(config, path, archs):
     else:
         ab = subprocess.check_output([config, '--list-format'])
         ab = ab[:-1].replace('"', '')
-        ab = ab.replace('/', '-rtems4.11-')
+        ab = ab.replace('/', '-rtems%s-' % (version))
         arch_bsps = [x for x in set(ab.split())]
     arch_bsps.sort()
     return arch_bsps
 
-def _check_arch_bsps(req, path, archs):
-    installed = _find_installed_bsps(path, archs)
+def _check_arch_bsps(req, config, path, archs, version):
+    archs_bsps = []
+    for ab in req.split(','):
+        abl = ab.split('/')
+        if len(abl) != 2:
+            return []
+        found = False
+        for arch in archs:
+            a = '%s-rtems%s' % (abl[0], version)
+            if a == arch:
+                found = True
+                break
+        if not found:
+            return []
+        archs_bsps += ['%s-%s' % (a, abl[1])]
+    if len(archs_bsps) == 0:
+        return []
+    installed = _find_installed_arch_bsps(config, path, archs, version)
     bsps = []
-    for b in req.split(','):
+    for b in archs_bsps:
         if b in installed:
             bsps += [b]
     bsps.sort()
