@@ -12,6 +12,8 @@ default_version = '4.11'
 default_label = 'rtems-' + default_version
 default_path = '/opt/' + default_label
 
+rtems_filters = None
+
 def options(opt):
     opt.add_option('--rtems',
                    default = default_path,
@@ -39,7 +41,9 @@ def options(opt):
                    dest = 'show_commands',
                    help = 'Print the commands as strings.')
 
-def init(ctx):
+def init(ctx, filters = None):
+    global rtems_filters
+
     try:
         import waflib.Options
         import waflib.ConfigSet
@@ -49,6 +53,11 @@ def init(ctx):
         #
         env = waflib.ConfigSet.ConfigSet()
         env.load(waflib.Options.lockfile)
+
+        #
+        # Set the RTEMS filter to the context.
+        #
+        rtems_filters = filters
 
         #
         # Check the tools, architectures and bsps.
@@ -100,14 +109,16 @@ def configure(conf):
                                                   conf.options.rtems_bsps)
 
     _log_header(conf)
-    conf.to_log('Architectures: ' + ','.join(archs))
 
-    tools = _find_tools(conf, archs, rtems_tools)
+    conf.msg('Architectures', ', '.join(archs), 'YELLOW')
 
+    tools = {}
     env = conf.env
 
     for ab in arch_bsps:
         conf.setenv(ab, env)
+
+        conf.msg('Board Support Package', ab, 'YELLOW')
 
         arch = _arch_from_arch_bsp(ab)
 
@@ -118,6 +129,7 @@ def configure(conf):
         conf.env.RTEMS_ARCH_RTEMS = arch
         conf.env.RTEMS_BSP = _bsp_from_arch_bsp(ab)
 
+        tools = _find_tools(conf, arch, rtems_tools, tools)
         for t in tools[arch]:
             conf.env[t] = tools[arch][t]
 
@@ -135,11 +147,11 @@ def configure(conf):
         # Hack to work around NIOS2 naming.
         #
         if conf.env.RTEMS_ARCH in ['nios2']:
-            objcopy_format = 'elf32-little' + conf.env.RTEMS_ARCH
+            conf.env.OBJCOPY_FLAGS = ['-O', 'elf32-littlenios2']
+        elif conf.env.RTEMS_ARCH in ['arm']:
+            conf.env.OBJCOPY_FLAGS = ['-I', 'binary', '-O', 'elf32-littlearm']
         else:
-            objcopy_format = 'elf32-' + conf.env.RTEMS_ARCH
-
-        conf.env.OBJCOPY_FLAGS = ['-O ', objcopy_format]
+            conf.env.OBJCOPY_FLAGS = ['-O', 'elf32-' + conf.env.RTEMS_ARCH]
 
         conf.env.SHOW_COMMANDS = show_commands
 
@@ -185,6 +197,11 @@ def check_options(ctx, rtems_tools, rtems_path, rtems_version, rtems_archs, rtem
         tools = None
 
     #
+    # Filter the tools.
+    #
+    tools = filter(ctx, 'tools', tools)
+
+    #
     # Match the archs requested against the ones found. If the user
     # wants all (default) set all used.
     #
@@ -193,6 +210,14 @@ def check_options(ctx, rtems_tools, rtems_path, rtems_version, rtems_archs, rtem
     else:
         archs = _check_archs(rtems_config, rtems_archs, rtems_path, rtems_version)
 
+    #
+    # Filter the architectures.
+    #
+    archs = filter(ctx, 'archs', archs)
+
+    #
+    # We some.
+    #
     if len(archs) == 0:
         ctx.fatal('Could not find any architectures')
 
@@ -208,6 +233,11 @@ def check_options(ctx, rtems_tools, rtems_path, rtems_version, rtems_archs, rtem
     if len(arch_bsps) == 0:
         ctx.fatal('No valid arch/bsps found')
 
+    #
+    # Filter the bsps.
+    #
+    arch_bsps = filter(ctx, 'bsps', arch_bsps)
+
     return tools, archs, arch_bsps
 
 def arch(arch_bsp):
@@ -221,6 +251,33 @@ def arch_bsps(ctx):
 
 def arch_bsp_env(ctx, arch_bsp):
     return ctx.env_of_name(arch_bsp).derive()
+
+def filter(ctx, filter, items):
+    if rtems_filters is None:
+        return items
+    if type(rtems_filters) is not dict:
+        ctx.fatal("Invalid RTEMS filter type, ie { 'tools': { 'in': [], 'out': [] }, 'arch': {}, 'bsps': {} }")
+    if filter not in rtems_filters:
+        return items
+    items_in = []
+    items_out = []
+    filtered_items = []
+    if 'in' in rtems_filters[filter]:
+        items_in = rtems_filters[filter]['in']
+    if 'out' in rtems_filters[filter]:
+        items_out = rtems_filters[filter]['out']
+    for i in items:
+        ab = '%s/%s' % (arch(i), bsp(i))
+        if ab in items_out:
+            i = None
+        elif ab in items_in:
+            items_in.remove(ab)
+        if i is not None:
+            filtered_items += [i]
+        if len(items_in) != 0:
+            ctx.fatal('Following %s not found: %s' % (filter, ', '.join(items_in)))
+    filtered_items.sort()
+    return filtered_items
 
 def clone_tasks(bld):
     if bld.cmd == 'build':
@@ -272,9 +329,8 @@ def output_command_line():
 
     Task.__str__ = display
 
-def _find_tools(conf, archs, paths):
-    tools = {}
-    for arch in archs:
+def _find_tools(conf, arch, paths, tools):
+    if arch not in tools:
         arch_tools = {}
         arch_tools['CC']       = conf.find_program([arch + '-gcc'], path_list = paths)
         arch_tools['CXX']      = conf.find_program([arch + '-g++'], path_list = paths)

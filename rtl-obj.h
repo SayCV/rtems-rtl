@@ -135,7 +135,7 @@ typedef bool (*rtems_rtl_obj_sect_handler_t)(rtems_rtl_obj_t*      obj,
  * @param obj The object file.
  * @return const char* The string.
  */
-static inline const char* rtems_rtl_obj_fname (rtems_rtl_obj_t* obj)
+static inline const char* rtems_rtl_obj_fname (const rtems_rtl_obj_t* obj)
 {
   return obj->fname;
 }
@@ -146,7 +146,7 @@ static inline const char* rtems_rtl_obj_fname (rtems_rtl_obj_t* obj)
  * @param obj The object file.
  * @return bool There is a file name
  */
-static inline bool rtems_rtl_obj_fname_valid (rtems_rtl_obj_t* obj)
+static inline bool rtems_rtl_obj_fname_valid (const rtems_rtl_obj_t* obj)
 {
   return obj->fname;
 }
@@ -157,7 +157,7 @@ static inline bool rtems_rtl_obj_fname_valid (rtems_rtl_obj_t* obj)
  * @param obj The object file.
  * @return const char* The string.
  */
-static inline const char* rtems_rtl_obj_oname (rtems_rtl_obj_t* obj)
+static inline const char* rtems_rtl_obj_oname (const rtems_rtl_obj_t* obj)
 {
   return obj->oname;
 }
@@ -168,7 +168,7 @@ static inline const char* rtems_rtl_obj_oname (rtems_rtl_obj_t* obj)
  * @param obj The object file.
  * @return bool There is an object name
  */
-static inline bool rtems_rtl_obj_oname_valid (rtems_rtl_obj_t* obj)
+static inline bool rtems_rtl_obj_oname_valid (const rtems_rtl_obj_t* obj)
 {
   return obj->oname;
 }
@@ -179,7 +179,7 @@ static inline bool rtems_rtl_obj_oname_valid (rtems_rtl_obj_t* obj)
  * @param obj The object file.
  * @return const char* The string.
  */
-static inline const char* rtems_rtl_obj_aname (rtems_rtl_obj_t* obj)
+static inline const char* rtems_rtl_obj_aname (const rtems_rtl_obj_t* obj)
 {
   return obj->aname;
 }
@@ -190,7 +190,7 @@ static inline const char* rtems_rtl_obj_aname (rtems_rtl_obj_t* obj)
  * @param obj The object file.
  * @return bool There is an archive name
  */
-static inline bool rtems_rtl_obj_aname_valid (rtems_rtl_obj_t* obj)
+static inline bool rtems_rtl_obj_aname_valid (const rtems_rtl_obj_t* obj)
 {
   return obj->aname;
 }

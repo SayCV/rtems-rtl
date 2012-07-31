@@ -5,8 +5,22 @@ import rtems
 
 version = "1.0.0"
 
+#
+# Filter out BSPs in the ARM architecture which it cannot fit in or have other
+# issues.
+#
+filters = {
+    'bsps': {
+        'out': ['arm/rtl22xx',
+                'arm/lpc32xx_mzx_stage_1',
+                'arm/lpc23xx_tli800',
+                'arm/lpc2362',
+                'arm/nds']
+        }
+    }
+
 def init(ctx):
-    rtems.init(ctx)
+    rtems.init(ctx, filters)
 
 def options(opt):
     rtems.options(opt)
@@ -36,6 +50,7 @@ def build(bld):
         bld.defines += ['RTL_GSYM_EMBEDDED=1']
 
     rtl_source(bld, arch)
+    rtl_bspinit(bld, arch)
     rtl_liba(bld, arch)
     rtl_root_fs(bld)
     rtl_gsyms(bld)
@@ -48,7 +63,7 @@ def build(bld):
         includes = bld.includes,
         defines = bld.defines,
         cflags = '-g',
-        use = ['rtl', 'rootfs', 'rtld-gsyms'],
+        use = ['rtl', 'bspinit', 'rootfs', 'rtld-gsyms'],
         depends_on = 'gsyms')
 
     if bld.env.ASCIIDOC:
@@ -83,6 +98,14 @@ def rtl_source(bld, arch):
                   'rtl-trace.c',
                   'rtl-unresolved.c',
                   'rtl-mdreloc-' + arch + '.c'])
+
+def rtl_bspinit(bld, arch):
+    if arch == 'arm':
+        bld(target = 'bspinit',
+            features = 'c',
+            includes = bld.includes,
+            defines = bld.defines,
+            source = ['bspinit.c'])
 
 def rtl_liba(bld, arch):
     bld(target = 'x',

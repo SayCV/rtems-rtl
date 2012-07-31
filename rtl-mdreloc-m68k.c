@@ -23,14 +23,16 @@ rtems_rtl_elf_rel_resolve_sym (Elf_Word type)
 }
 
 bool
-rtems_rtl_elf_relocate_rela (rtems_rtl_obj_t*      obj,
-                             const Elf_Rela*       rela,
-                             rtems_rtl_obj_sect_t* sect,
-                             Elf_Word              symvalue)
+rtems_rtl_elf_relocate_rela (const rtems_rtl_obj_t*      obj,
+                             const Elf_Rela*             rela,
+                             const rtems_rtl_obj_sect_t* sect,
+                             const char*                 symnane,
+                             const Elf_Byte              syminfo,
+                             const Elf_Word              symvalue)
 {
 	Elf_Addr  target = 0;
   Elf_Addr* where;
-                             
+
   where = (Elf_Addr *)(sect->base + rela->r_offset);
 
   switch (ELF_R_TYPE(rela->r_info)) {
@@ -94,11 +96,13 @@ rtems_rtl_elf_relocate_rela (rtems_rtl_obj_t*      obj,
 }
 
 bool
-rtems_rtl_elf_relocate_rel (rtems_rtl_obj_t*      obj,
-                            const Elf_Rel*        rel,
-                            rtems_rtl_obj_sect_t* sect,
-                            Elf_Word              symvalue)
+rtems_rtl_elf_relocate_rel (const rtems_rtl_obj_t*      obj,
+                            const Elf_Rel*              rel,
+                            const rtems_rtl_obj_sect_t* sect,
+                            const char*                 symname,
+                            const Elf_Byte              syminfo,
+                            const Elf_Word              symvalue)
 {
-  printf ("rtl: rel type record not supported; please report\n");
+  rtems_rtl_set_error (EINVAL, "rel type record not supported");
   return false;
 }

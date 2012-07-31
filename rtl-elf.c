@@ -234,19 +234,21 @@ rtems_rtl_elf_relocator (rtems_rtl_obj_t*      obj,
       if (is_rela)
       {
         if (rtems_rtl_trace (RTEMS_RTL_TRACE_RELOC))
-          printf ("rtl: rela: sym:%-2d type:%-2d off:%08lx addend:%d\n",
-                  (int) ELF_R_SYM (rela->r_info), (int) ELF_R_TYPE (rela->r_info),
+          printf ("rtl: rela: sym:%s(%-2d) type:%-2d off:%08lx addend:%d\n",
+                  symname, (int) ELF_R_SYM (rela->r_info), (int) ELF_R_TYPE (rela->r_info),
                   rela->r_offset, (int) rela->r_addend);
-        if (!rtems_rtl_elf_relocate_rela (obj, rela, targetsect, symvalue))
+        if (!rtems_rtl_elf_relocate_rela (obj, rela, targetsect,
+                                          symname, sym.st_info, symvalue))
           return false;
       }
       else
       {
         if (rtems_rtl_trace (RTEMS_RTL_TRACE_RELOC))
-          printf ("rtl: rel: sym:%-2d type:%-2d off:%08lx\n",
-                  (int) ELF_R_SYM (rel->r_info), (int) ELF_R_TYPE (rel->r_info),
+          printf ("rtl: rel: sym:%s(%-2d) type:%-2d off:%08lx\n",
+                  symname, (int) ELF_R_SYM (rel->r_info), (int) ELF_R_TYPE (rel->r_info),
                   rel->r_offset);
-        if (!rtems_rtl_elf_relocate_rel (obj, rel, targetsect, symvalue))
+        if (!rtems_rtl_elf_relocate_rel (obj, rel, targetsect,
+                                         symname, sym.st_info, symvalue))
           return false;
       }
     }
@@ -289,7 +291,8 @@ rtems_rtl_obj_relocate_unresolved (rtems_rtl_unresolv_reloc_t* reloc,
           printf ("rtl: rela: sym:%-2d type:%-2d off:%08lx addend:%d\n",
                   (int) ELF_R_SYM (rela.r_info), (int) ELF_R_TYPE (rela.r_info),
                   rela.r_offset, (int) rela.r_addend);
-    if (!rtems_rtl_elf_relocate_rela (reloc->obj, &rela, sect, symvalue))
+    if (!rtems_rtl_elf_relocate_rela (reloc->obj, &rela, sect,
+                                      sym->name, sym->data, symvalue))
       return false;
   }
   else
@@ -301,7 +304,8 @@ rtems_rtl_obj_relocate_unresolved (rtems_rtl_unresolv_reloc_t* reloc,
       printf ("rtl: rel: sym:%-2d type:%-2d off:%08lx\n",
               (int) ELF_R_SYM (rel.r_info), (int) ELF_R_TYPE (rel.r_info),
               rel.r_offset);
-    if (!rtems_rtl_elf_relocate_rel (reloc->obj, &rel, sect, symvalue))
+    if (!rtems_rtl_elf_relocate_rel (reloc->obj, &rel, sect,
+                                     sym->name, sym->data, symvalue))
       return false;
   }
 
@@ -468,6 +472,7 @@ rtems_rtl_elf_symbols (rtems_rtl_obj_t*      obj,
         gsym->name = string;
         string += strlen (name) + 1;
         gsym->value = symbol.st_value + (uint8_t*) symsect->base;
+        gsym->data = symbol.st_info;
 
         if (rtems_rtl_trace (RTEMS_RTL_TRACE_SYMBOL))
           printf ("rtl: sym:add:%-2d name:%-2d:%-20s bind:%-2d type:%-2d val:%8p sect:%d size:%d\n",

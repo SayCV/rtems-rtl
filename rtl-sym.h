@@ -31,6 +31,7 @@ typedef struct rtems_rtl_obj_sym_s
   rtems_chain_node node;    /**< The node's link in the chain. */
   const char*      name;    /**< The symbol's name. */
   void*            value;   /**< The value of the symbol. */
+  uint32_t         data;    /**< Format specific data. */
 } rtems_rtl_obj_sym_t;
 
 /**

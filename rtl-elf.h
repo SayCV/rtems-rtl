@@ -72,14 +72,18 @@ bool rtems_rtl_elf_rel_resolve_sym (Elf_Word type);
  * @param obj The object file being relocated.
  * @param rel The ELF relocation record.
  * @param sect The section of the object file the relocation is for.
+ * @param symname The symbol's name.
+ * @param syminfo The ELF symbol info field.
  * @param symvalue If a symbol is referenced, this is the symbols value.
  * @retval bool The relocation has been applied.
  * @retval bool The relocation could not be applied.
  */
-bool rtems_rtl_elf_relocate_rel (rtems_rtl_obj_t*      obj,
-                                 const Elf_Rel*        rel,
-                                 rtems_rtl_obj_sect_t* sect,
-                                 Elf_Word              symvalue);
+bool rtems_rtl_elf_relocate_rel (const rtems_rtl_obj_t*      obj,
+                                 const Elf_Rel*              rel,
+                                 const rtems_rtl_obj_sect_t* sect,
+                                 const char*                 symname,
+                                 const Elf_Byte              syminfo,
+                                 const Elf_Word              symvalue);
 
 /**
  * Architecture specific relocation handler compiled in for a specific
@@ -89,14 +93,18 @@ bool rtems_rtl_elf_relocate_rel (rtems_rtl_obj_t*      obj,
  * @param obj The object file being relocated.
  * @param rela The ELF addend relocation record.
  * @param sect The section of the object file the relocation is for.
+ * @param symname The symbol's name.
+ * @param syminfo The ELF symbol info field.
  * @param symvalue If a symbol is referenced, this is the symbols value.
  * @retval bool The relocation has been applied.
  * @retval bool The relocation could not be applied.
  */
-bool rtems_rtl_elf_relocate_rela (rtems_rtl_obj_t*      obj,
-                                  const Elf_Rela*       rela,
-                                  rtems_rtl_obj_sect_t* sect,
-                                  Elf_Word              symvalue);
+bool rtems_rtl_elf_relocate_rela (const rtems_rtl_obj_t*      obj,
+                                  const Elf_Rela*             rela,
+                                  const rtems_rtl_obj_sect_t* sect,
+                                  const char*                 symname,
+                                  const Elf_Byte              syminfo,
+                                  const Elf_Word              symvalue);
 
 /**
  * Find the symbol. The symbol is passed as an ELF type symbol with the name

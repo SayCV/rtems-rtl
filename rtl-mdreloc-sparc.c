@@ -124,7 +124,7 @@ static const int reloc_target_bitmask[] = {
   _BM(22), _BM(22),           /* HI22, _22 */
   _BM(13), _BM(10),           /* RELOC_13, _LO10 */
   _BM(10), _BM(13), _BM(22),  /* GOT10, GOT13, GOT22 */
-  _BM(10), _BM(22),           /* _PC10, _PC22 */  
+  _BM(10), _BM(22),           /* _PC10, _PC22 */
   _BM(30), 0,                 /* _WPLT30, _COPY */
   -1, -1, -1,                 /* _GLOB_DAT, JMP_SLOT, _RELATIVE */
   _BM(32)                     /* _UA32 */
@@ -139,10 +139,12 @@ rtems_rtl_elf_rel_resolve_sym (Elf_Word type)
 }
 
 bool
-rtems_rtl_elf_relocate_rela (rtems_rtl_obj_t*      obj,
-                             const Elf_Rela*       rela,
-                             rtems_rtl_obj_sect_t* sect,
-                             Elf_Word              symvalue)
+rtems_rtl_elf_relocate_rela (const rtems_rtl_obj_t*      obj,
+                             const Elf_Rela*             rela,
+                             const rtems_rtl_obj_sect_t* sect,
+                             const char*                 symname,
+                             const Elf_Byte              syminfo,
+                             const Elf_Word              symvalue)
 {
   Elf_Addr *where;
   Elf_Word type, value, mask;
@@ -246,10 +248,12 @@ rtems_rtl_elf_relocate_rela (rtems_rtl_obj_t*      obj,
 }
 
 bool
-rtems_rtl_elf_relocate_rel (rtems_rtl_obj_t*      obj,
-                            const Elf_Rel*        rel,
-                            rtems_rtl_obj_sect_t* sect,
-                            Elf_Word              symvalue)
+rtems_rtl_elf_relocate_rel (const rtems_rtl_obj_t*      obj,
+                            const Elf_Rel*              rel,
+                            const rtems_rtl_obj_sect_t* sect,
+                            const char*                 symname,
+                            const Elf_Byte              syminfo,
+                            const Elf_Word              symvalue)
 {
   printf ("rtl: rel type record not supported; please report\n");
   return false;

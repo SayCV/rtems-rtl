@@ -229,7 +229,7 @@ setup_ramdisk (void)
 {
   rtems_device_major_number major;
   rtems_status_code         sc;
-  
+
   /*
    * Register the RAM Disk driver.
    */
@@ -243,7 +243,7 @@ setup_ramdisk (void)
             rtems_status_text (sc));
     return 1;
   }
-  
+
   printf ("successful\n");
 
   return 0;
@@ -255,7 +255,7 @@ setup_flashdisk (void)
 #if RTEMS_APP_FLASHDISK
   rtems_device_major_number major;
   rtems_status_code         sc;
-  
+
   /*
    * Register the Flash Disk driver.
    */
@@ -269,7 +269,7 @@ setup_flashdisk (void)
             rtems_status_text (sc));
     return 1;
   }
-  
+
   printf ("successful\n");
 #endif
   return 0;
@@ -304,9 +304,9 @@ static int
 setup_rootfs (void)
 {
   rtems_status_code sc;
-  
+
   printf("Loading filesystem: ");
-  
+
   sc = Untar_FromMemory((void *)(&TARFILE_START), (size_t)&TARFILE_SIZE);
 
   if (sc != RTEMS_SUCCESSFUL)
@@ -314,7 +314,7 @@ setup_rootfs (void)
     printf ("error: untar failed: %s\n", rtems_status_text (sc));
     return 1;
   }
-  
+
   printf ("successful\n");
 
   return 0;
@@ -327,7 +327,7 @@ shell_flash_erase (int argc, char* argv[])
   const char* driver = NULL;
   int         arg;
   int         fd;
-  
+
   for (arg = 1; arg < argc; arg++)
   {
     if (argv[arg][0] == '-')
@@ -346,24 +346,24 @@ shell_flash_erase (int argc, char* argv[])
       }
     }
   }
-  
+
   printf ("erase flash disk: %s\n", driver);
-  
+
   fd = open (driver, O_WRONLY, 0);
   if (fd < 0)
   {
     printf ("error: flash driver open failed: %s\n", strerror (errno));
     return 1;
   }
-  
+
   if (ioctl (fd, RTEMS_FDISK_IOCTL_ERASE_DISK) < 0)
   {
     printf ("error: flash driver erase failed: %s\n", strerror (errno));
     return 1;
   }
-  
+
   close (fd);
-  
+
   printf ("flash disk erased successful\n");
 #endif
   return 0;
@@ -388,21 +388,21 @@ main (int argc, char* argv[])
   cfsetospeed (&term, B115200);
   if (tcsetattr (fileno(stdout), TCSADRAIN, &term) < 0)
     printf ("error: cannot set terminal attributes: %s\n", strerror (errno));
-  
+
   if (tcgetattr(fileno(stdin), &term) < 0)
     printf ("error: cannot get terminal attributes: %s\n", strerror (errno));
   cfsetispeed (&term, B115200);
   cfsetospeed (&term, B115200);
   if (tcsetattr (fileno(stdin), TCSADRAIN, &term) < 0)
     printf ("error: cannot set terminal attributes: %s\n", strerror (errno));
-  
+
   printf ("\nRTEMS Run Time Link Editor Test, Version " \
           PACKAGE_VERSION "\n\n");
 
   ret = setup_ramdisk ();
   if (ret)
     exit (ret);
-  
+
   ret = setup_flashdisk ();
   if (ret)
     exit (ret);
@@ -410,11 +410,11 @@ main (int argc, char* argv[])
   ret = setup_idedisk ("/dev/hda");
   if (ret)
     exit (ret);
-  
+
   ret = setup_idedisk ("/dev/hdb");
   if (ret)
     exit (ret);
-  
+
   ret = setup_rootfs ();
   if (ret)
     exit (ret);
@@ -424,7 +424,7 @@ main (int argc, char* argv[])
                        "RLT trace",
                        rtems_rtl_trace_shell_command);
 #endif
-  
+
   rtems_shell_add_cmd ("fderase", "misc",
                        "fderase driver", shell_flash_erase);
   rtems_shell_add_cmd ("rtl", "misc",
@@ -437,12 +437,12 @@ main (int argc, char* argv[])
                        "symbol search file", shell_dlsym);
   rtems_shell_add_cmd ("dlx", "misc",
                        "execute a call to the symbol", shell_dlcall);
-  
+
   shell_init_script ();
 
   while (true)
     shell_start ();
-  
+
   rtems_task_delete (RTEMS_SELF);
 
   return 0;
