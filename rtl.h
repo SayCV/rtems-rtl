@@ -272,7 +272,7 @@ bool rtems_rtl_path_prepend (const char* path);
 void rtems_rtl_base_sym_global_add (const unsigned char* esyms,
                                     unsigned int         count);
 
-  /**
+/**
  * Return the object file descriptor for the base image. The object file
  * descriptor returned is created when the run time linker is initialised.
  *
