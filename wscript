@@ -25,20 +25,26 @@ def init(ctx):
 def options(opt):
     rtems.options(opt)
 
+    opt.add_option('--gsyms-embedded',
+                   action = 'store_true',
+                   default = False,
+                   dest = 'gsym_embedded',
+                   help = 'Embedded the global symbols in the executable (buggy).')
+
 def configure(conf):
     rtems.configure(conf)
 
     conf.env.ASCIIDOC = conf.find_program(['asciidoc.py'], mandatory = False)
-    conf.env.ASCIIDOC_FLAGS = ['-b', 'html5', '-a', 'data-uri', '-a', 'icons', '-a', 'max-width=55em-a']
+    conf.env.ASCIIDOC_FLAGS = ['-b', 'html', '-a', 'data-uri', '-a', 'icons', '-a', 'max-width=55em-a']
 
-    # hack on at the moment.
-    conf.env.GSYM_EMBEDDED = True
+    conf.env.GSYM_EMBEDDED = conf.options.gsym_embedded
 
 def build(bld):
     bld.add_post_fun(rtl_post_build)
 
     rtems.build(bld)
 
+    arch_bsp = bld.get_env()['RTEMS_ARCH_BSP']
     arch = bld.get_env()['RTEMS_ARCH']
 
     bld.includes = ['.',
@@ -51,7 +57,6 @@ def build(bld):
 
     rtl_source(bld, arch)
     rtl_bspinit(bld, arch)
-    rtl_liba(bld, arch)
     rtl_root_fs(bld)
     rtl_gsyms(bld)
 
@@ -63,8 +68,8 @@ def build(bld):
         includes = bld.includes,
         defines = bld.defines,
         cflags = '-g',
-        use = ['rtl', 'bspinit', 'rootfs', 'rtld-gsyms'],
-        depends_on = 'gsyms')
+        use = ['rtl', 'bspinit', 'rootfs'],
+        install_path = '${PREFIX}/%s/samples' % (rtems.arch_bsp_path(arch_bsp)))
 
     if bld.env.ASCIIDOC:
         bld(target = 'rtems-rtl.html', source = 'rtems-rtl.txt')
@@ -76,9 +81,11 @@ def rebuild(ctx):
 def tags(ctx):
     ctx.exec_command('etags $(find . -name \*.[sSch])', shell = True)
 
-def rtl_source(bld, arch):
+def rtl_source(bld, arch_bsp):
+    arch = rtems.arch(arch_bsp)
+
     bld(target = 'rtl',
-        features = 'c',
+        features = 'c cstlib',
         includes = bld.includes,
         cflags = '-g',
         source = ['dlfcn.c',
@@ -97,7 +104,31 @@ def rtl_source(bld, arch):
                   'rtl-sym.c',
                   'rtl-trace.c',
                   'rtl-unresolved.c',
-                  'rtl-mdreloc-' + arch + '.c'])
+                  'rtl-mdreloc-%s.c' % (arch)],
+        install_path = '${PREFIX}/%s' % (rtems.arch_bsp_lib_path(arch_bsp)))
+
+    bsp_include_base = '${PREFIX}/%s' % (rtems.arch_bsp_include_path(arch_bsp))
+
+    bld.install_files("%s" % (bsp_include_base),
+                      ['libbsd/include/dlfcn.h',
+                       'libbsd/include/err.h',
+                       'libbsd/include/link.h',
+                       'libbsd/include/link_elf.h'])
+
+    bld.install_files("%s/sys" % (bsp_include_base),
+                      ['libbsd/include/sys/ansi.h',
+                       'libbsd/include/sys/cdefs.h',
+                       'libbsd/include/sys/cdefs_elf.h',
+                       'libbsd/include/sys/exec_elf.h',
+                       'libbsd/include/sys/featuretest.h',
+                       'libbsd/include/sys/nb-queue.h'])
+
+    bld.install_files("%s/machine" % (bsp_include_base),
+                      ['libbsd/include/arch/%s/machine/ansi.h' % (arch),
+                       'libbsd/include/arch/%s/machine/asm.h' % (arch),
+                       'libbsd/include/arch/%s/machine/cdefs.h' % (arch),
+                       'libbsd/include/arch/%s/machine/elf_machdep.h' % (arch),
+                       'libbsd/include/arch/%s/machine/int_types.h' % (arch)])
 
 def rtl_bspinit(bld, arch):
     if arch == 'arm':
@@ -107,24 +138,17 @@ def rtl_bspinit(bld, arch):
             defines = bld.defines,
             source = ['bspinit.c'])
 
-def rtl_liba(bld, arch):
-    bld(target = 'x',
+def mmap_source(bld, arch_bsp):
+    bld(target = 'mmap',
         features = 'c cstlib',
         includes = bld.includes,
-        defines = bld.defines,
-        source = ['xa.c',
-                  'x-long-name-to-create-gnu-extension-in-archive.c'])
-
-def mmap_source(bld, includes):
-    bld(target = 'mmap',
-        features = 'c',
-        includes = includes,
         source = ['mmap.c',
-                  'munmap.c'])
+                  'munmap.c'],
+        install_path = '${PREFIX}/%s' % (rtems.arch_bsp_lib_path(arch_bsp)))
 
 def rtl_root_fs(bld):
     bld(target = 'fs-root.tar',
-        source = ['shell-init', 'libx.a'],
+        source = ['shell-init'],
         rule = 'tar cf - ${SRC} > ${TGT}')
     bld.objects(name = 'rootfs',
                 target = 'fs-root-tarfile.o',
@@ -135,7 +159,7 @@ def rtl_pre_build(bld):
     pass
 
 def rtl_post_build(bld):
-    rtl_gsyms(bld)
+    pass
 
 def rtl_gsyms(bld):
     import os.path
