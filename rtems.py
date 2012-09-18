@@ -11,6 +11,7 @@ import subprocess
 default_version = '4.11'
 default_label = 'rtems-' + default_version
 default_path = '/opt/' + default_label
+default_postfix = 'rtems' + default_version
 
 rtems_filters = None
 
@@ -84,7 +85,7 @@ def init(ctx, filters = None):
         #
         # Add the various commands.
         #
-        for cmd in ['build', 'clean']:
+        for cmd in ['build', 'clean', 'install']:
             if cmd in waflib.Options.commands:
                 waflib.Options.commands.remove(cmd)
                 for x in arch_bsps:
@@ -113,7 +114,7 @@ def configure(conf):
     conf.msg('Architectures', ', '.join(archs), 'YELLOW')
 
     tools = {}
-    env = conf.env
+    env = conf.env.derive()
 
     for ab in arch_bsps:
         conf.setenv(ab, env)
@@ -155,7 +156,7 @@ def configure(conf):
 
         conf.env.SHOW_COMMANDS = show_commands
 
-    conf.setenv('', env)
+        conf.setenv('', env)
 
     conf.env.RTEMS_TOOLS = rtems_tools
     conf.env.ARCHS = archs
@@ -241,12 +242,15 @@ def check_options(ctx, rtems_tools, rtems_path, rtems_version, rtems_archs, rtem
     return tools, archs, arch_bsps
 
 def arch(arch_bsp):
+    """ Given an arch/bsp return the architecture."""
     return _arch_from_arch_bsp(arch_bsp).split('-')[0]
 
 def bsp(arch_bsp):
+    """ Given an arch/bsp return the BSP."""
     return _bsp_from_arch_bsp(arch_bsp)
 
 def arch_bsps(ctx):
+    """ Return the list of arch/bsps we are building."""
     return ctx.env.ARCH_BSPS
 
 def arch_bsp_env(ctx, arch_bsp):
@@ -278,6 +282,22 @@ def filter(ctx, filter, items):
             ctx.fatal('Following %s not found: %s' % (filter, ', '.join(items_in)))
     filtered_items.sort()
     return filtered_items
+
+def arch_rtems_version(arch):
+    """ Return the RTEMS architecture path, ie sparc-rtems4.11."""
+    return '%s-%s' % (arch, default_postfix)
+
+def arch_bsp_path(arch_bsp):
+    """ Return the BSP path."""
+    return '%s/%s' % (arch_rtems_version(arch(arch_bsp)), bsp(arch_bsp))
+
+def arch_bsp_include_path(arch_bsp):
+    """ Return the BSP include path."""
+    return '%s/lib/include' % (arch_bsp_path(arch_bsp))
+
+def arch_bsp_lib_path(arch_bsp):
+    """ Return the BSP library path. """
+    return '%s/lib' % (arch_bsp_path(arch_bsp))
 
 def clone_tasks(bld):
     if bld.cmd == 'build':
