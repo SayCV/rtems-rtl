@@ -40,8 +40,6 @@ def configure(conf):
     conf.env.GSYM_EMBEDDED = conf.options.gsym_embedded
 
 def build(bld):
-    bld.add_post_fun(rtl_post_build)
-
     rtems.build(bld)
 
     arch_bsp = bld.get_env()['RTEMS_ARCH_BSP']
@@ -55,34 +53,9 @@ def build(bld):
     if bld.env.GSYM_EMBEDDED:
         bld.defines += ['RTL_GSYM_EMBEDDED=1']
 
-    rtl_source(bld, arch)
     rtl_bspinit(bld, arch)
     rtl_root_fs(bld)
     rtl_gsyms(bld)
-
-    bld(target = 'rtld',
-        features = 'c cprogram',
-        source = ['init.c',
-                  'main.c',
-                  'fs-root-tarfile.o'],
-        includes = bld.includes,
-        defines = bld.defines,
-        cflags = '-g',
-        use = ['rtl', 'bspinit', 'rootfs'],
-        install_path = '${PREFIX}/%s/samples' % (rtems.arch_bsp_path(arch_bsp)))
-
-    if bld.env.ASCIIDOC:
-        bld(target = 'rtems-rtl.html', source = 'rtems-rtl.txt')
-
-def rebuild(ctx):
-    import waflib.Options
-    waflib.Options.commands.extend(['clean', 'build'])
-
-def tags(ctx):
-    ctx.exec_command('etags $(find . -name \*.[sSch])', shell = True)
-
-def rtl_source(bld, arch_bsp):
-    arch = rtems.arch(arch_bsp)
 
     bld(target = 'rtl',
         features = 'c cstlib',
@@ -130,6 +103,27 @@ def rtl_source(bld, arch_bsp):
                        'libbsd/include/arch/%s/machine/elf_machdep.h' % (arch),
                        'libbsd/include/arch/%s/machine/int_types.h' % (arch)])
 
+    bld(target = 'rtld',
+        features = 'c cprogram',
+        source = ['init.c',
+                  'main.c',
+                  'fs-root-tarfile.o'],
+        includes = bld.includes,
+        defines = bld.defines,
+        cflags = '-g',
+        use = ['rtl', 'bspinit', 'rootfs'],
+        install_path = '${PREFIX}/%s/samples' % (rtems.arch_bsp_path(arch_bsp)))
+
+    if bld.env.ASCIIDOC:
+        bld(target = 'rtems-rtl.html', source = 'rtems-rtl.txt')
+
+def rebuild(ctx):
+    import waflib.Options
+    waflib.Options.commands.extend(['clean', 'build'])
+
+def tags(ctx):
+    ctx.exec_command('etags $(find . -name \*.[sSch])', shell = True)
+
 def rtl_bspinit(bld, arch):
     if arch == 'arm':
         bld(target = 'bspinit',
@@ -154,12 +148,6 @@ def rtl_root_fs(bld):
                 target = 'fs-root-tarfile.o',
                 source = 'fs-root.tar',
                 rule = '${OBJCOPY} -I binary -B ${RTEMS_ARCH} ${OBJCOPY_FLAGS} ${SRC} ${TGT}')
-
-def rtl_pre_build(bld):
-    pass
-
-def rtl_post_build(bld):
-    pass
 
 def rtl_gsyms(bld):
     import os.path
