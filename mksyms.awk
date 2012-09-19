@@ -71,10 +71,14 @@ BEGIN {
       embed = 1
       delete ARGV[a];
     }
-    else if (ARGV[a] != "-" && ARGV[a] != "awk")
+    else if (ARGV[a] != "-")
     {
-      print ("invalid option:", ARGV[a]);
-      exit 2
+      ap = index (ARGV[a], "awk")
+      if ((ap == 0) || (ap != (length(ARGV[a]) - 2)))
+      {
+        print ("invalid option:", ARGV[a]);
+        exit 2
+      }
     }
   }
   c_header();
