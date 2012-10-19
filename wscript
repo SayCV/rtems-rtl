@@ -60,11 +60,18 @@ def build(bld):
             defines = bld.defines,
             source = ['bspinit.c'])
 
+    bld(target = 'x',
+        features = 'c cstlib',
+        includes = bld.includes,
+        defines = bld.defines,
+        source = ['xa.c',
+                  'x-long-name-to-create-gnu-extension-in-archive.c'])
+
     #
     # Create the root file system.
     #
     bld(target = 'fs-root.tar',
-        source = ['shell-init'],
+        source = ['shell-init', 'libx.a'],
         rule = 'tar cf - ${SRC} > ${TGT}')
     bld.objects(name = 'rootfs',
                 target = 'fs-root-tarfile.o',

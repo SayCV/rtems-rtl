@@ -8,20 +8,16 @@
 static int zero;
 unsigned int public = 0x12345678;
 
-void w_writeln(double d);
+void w_writeln(float d);
 void x_writeln(const char* s);
 void y_writeln(const char* s) __attribute__ ((section (".bar")));
 int z_writeln(int argc, const char* argv[]);
 int my_main (int argc, char* argv[]);
 
-#if RTL_GSYM_EMBEDDED
-#define sin(_d) (_d)
-#endif
-
 void
-w_writeln(double d)
+w_writeln(float d)
 {
-  printf ("sin(%f) = %f\n", d, sin(d));
+  printf ("%f / 3 = %f\n", d / 3);
 }
 
 void
