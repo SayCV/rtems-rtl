@@ -87,6 +87,7 @@ def build(bld):
         cflags = bld.cflags,
         source = ['dlfcn.c',
                   'dlfcn-shell.c',
+                  'fastlz.c',
                   'rtl.c',
                   'rtl-alloc-heap.c',
                   'rtl-allocator.c',
