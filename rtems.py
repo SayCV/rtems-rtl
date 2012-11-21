@@ -365,6 +365,7 @@ def _find_tools(conf, arch, paths, tools):
         arch_tools['OBJDUMP']  = conf.find_program([arch + '-objdump'], path_list = paths)
         arch_tools['OBJCOPY']  = conf.find_program([arch + '-objcopy'], path_list = paths)
         arch_tools['READELF']  = conf.find_program([arch + '-readelf'], path_list = paths)
+        arch_tools['RTEMS_LD'] = conf.find_program(['rtems-ld'], path_list = paths)
         tools[arch] = arch_tools
     return tools
 
@@ -490,3 +491,14 @@ def _load_flags_set(flags, arch_bsp, conf, config, pkg):
 
 def _log_header(conf):
     conf.to_log('-----------------------------------------')
+
+from waflib import TaskGen
+from waflib.Tools.ccroot import link_task, USELIB_VARS
+USELIB_VARS['rap'] = set(['RTEMS_LINKFLAGS'])
+@TaskGen.extension('.c')
+class rap(link_task):
+        "Link object files into a RTEMS applicatoin"
+        run_str = '${RTEMS_LD} ${RTEMS_LINKFLAGS} --cc ${CC} ${SRC} -o ${TGT[0].abspath()} ${STLIB_MARKER} ${STLIBPATH_ST:STLIBPATH} ${STLIB_ST:STLIB} ${LIBPATH_ST:LIBPATH} ${LIB_ST:LIB}'
+        ext_out = ['.rap']
+        vars    = ['RTEMS_LINKFLAGS', 'LINKDEPS']
+        inst_to = '${BINDIR}'

@@ -68,17 +68,6 @@ def build(bld):
                   'x-long-name-to-create-gnu-extension-in-archive.c'])
 
     #
-    # Create the root file system.
-    #
-    bld(target = 'fs-root.tar',
-        source = ['shell-init', 'libx.a'],
-        rule = 'tar cf - ${SRC} > ${TGT}')
-    bld.objects(name = 'rootfs',
-                target = 'fs-root-tarfile.o',
-                source = 'fs-root.tar',
-                rule = '${OBJCOPY} -I binary -B ${RTEMS_ARCH} ${OBJCOPY_FLAGS} ${SRC} ${TGT}')
-
-    #
     # The RTL library.
     #
     bld(features = 'c cstlib',
@@ -139,31 +128,61 @@ def build(bld):
     # finally the second link occurs with the global symbol table to create the
     # executable to install.
     #
-    bld(features = 'c',
-        target = 'app',
-        source = ['init.c',
-                  'main.c',
-                  'fs-root-tarfile.o'],
-        includes = bld.includes,
-        defines = bld.defines,
-        cflags = bld.cflags)
+    #
+    # Create the root file system for the prelink.
+    #
+    bld(target = 'fs-root.tar',
+        source = ['shell-init', 'libx.a'],
+        rule = 'tar cf - ${SRC} > ${TGT}')
+    bld.objects(name = 'rootfs.prelink',
+                target = 'fs-root-tarfile.o',
+                source = 'fs-root.tar',
+                rule = '${OBJCOPY} -I binary -B ${RTEMS_ARCH} ${OBJCOPY_FLAGS} ${SRC} ${TGT}')
 
     bld(features = 'c cprogram',
         target = 'rtld.prelink',
         includes = bld.includes,
         defines = bld.defines,
         cflags = bld.cflags,
-        use = ['app', 'rtl', 'bspinit', 'rootfs'],
+        source = ['init.c',
+                  'main.c',
+                  'fs-root-tarfile.o'],
+        use = ['rtl', 'bspinit'],
         install_path = None)
+
+    bld.add_group ()
+
+    #
+    # Build the actual kernel with the root file system with the application.
+    #
 
     bld(name = 'gsyms',
         target = 'rtld-gsyms.c',
         source = 'rtld.prelink',
         rule = '${NM} -g ${SRC} | ${AWK} -f ${GSYMS_AWK} ${GSYMS_FLAGS} > ${TGT}')
 
+    bld(target = 'x.rap',
+        features = 'c rap',
+        xxxx = 'hello',
+        rtems_linkflags = ['--base', 'rtld.prelink',
+                           '--entry', 'my_main'],
+        source = ['xa.c',
+                  'x-long-name-to-create-gnu-extension-in-archive.c'])
+
+    bld(target = 'fs-root.tar',
+        source = ['shell-init', 'libx.a', 'x.rap'],
+        rule = 'tar cf - ${SRC} > ${TGT}')
+    bld.objects(name = 'rootfs',
+                target = 'fs-root-tarfile.o',
+                source = 'fs-root.tar',
+                rule = '${OBJCOPY} -I binary -B ${RTEMS_ARCH} ${OBJCOPY_FLAGS} ${SRC} ${TGT}')
+
     bld(features = 'c cprogram',
         target = 'rtld',
-        source = ['rtld-gsyms.c'],
+        source = ['init.c',
+                  'main.c',
+                  'fs-root-tarfile.o',
+                  'rtld-gsyms.c'],
         includes = bld.includes,
         defines = bld.defines,
         cflags = bld.cflags,
@@ -195,3 +214,4 @@ waflib.TaskGen.declare_chain(name      = 'html',
                              ext_in    = '.txt',
                              ext_out   = '.html',
                              reentrant = False)
+

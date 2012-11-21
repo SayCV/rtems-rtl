@@ -8,16 +8,16 @@
 static int zero;
 unsigned int public = 0x12345678;
 
-void w_writeln(float d);
+void w_writeln(double d);
 void x_writeln(const char* s);
 void y_writeln(const char* s) __attribute__ ((section (".bar")));
 int z_writeln(int argc, const char* argv[]);
 int my_main (int argc, char* argv[]);
 
 void
-w_writeln(float d)
+w_writeln(double d)
 {
-  printf ("%f / 3 = %f\n", d / 3);
+  printf ("%f / 3 = %f\n", d / 3, d);
 }
 
 void
