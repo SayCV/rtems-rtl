@@ -37,6 +37,34 @@
 #define rtems_filesystem_is_delimiter rtems_filesystem_is_separator
 #endif
 
+#if RTEMS_RTL_RAP_LOADER
+#include "rtl-rap.h"
+#define RTEMS_RTL_RAP_LOADER_COUNT 1
+#else
+#define RTEMS_RTL_RAP_LOADER_COUNT 0
+#endif
+
+#if RTEMS_RTL_ELF_LOADER
+#include "rtl-elf.h"
+#define RTEMS_RTL_ELF_LOADER_COUNT 1
+#else
+#define RTEMS_RTL_ELF_LOADER_COUNT 0
+#endif
+
+/**
+ * The table of supported loader formats.
+ */
+static rtems_rtl_loader_table_t loaders[RTEMS_RTL_ELF_LOADER_COUNT +
+                                        RTEMS_RTL_RAP_LOADER_COUNT] =
+{
+#if RTEMS_RTL_RAP_LOADER
+  { rtems_rtl_rap_file_check, rtems_rtl_rap_file_load },
+#endif
+#if RTEMS_RTL_ELF_LOADER
+  { rtems_rtl_elf_file_check, rtems_rtl_elf_file_load },
+#endif
+};
+
 rtems_rtl_obj_t*
 rtems_rtl_obj_alloc (void)
 {
@@ -979,6 +1007,21 @@ rtems_rtl_obj_archive_find (rtems_rtl_obj_t* obj, int fd)
   rtems_rtl_set_error (ENOENT, "object file not found");
   obj->ooffset = 0;
   obj->fsize = 0;
+  return false;
+}
+
+bool
+rtems_rtl_obj_file_load (rtems_rtl_obj_t* obj, int fd)
+{
+  int l;
+
+  for (l = 0; l < (sizeof (loaders) / sizeof (rtems_rtl_loader_table_t)); ++l)
+  {
+    if (loaders[l].check (obj, fd))
+      return loaders[l].load (obj, fd);
+  }
+
+  rtems_rtl_set_error (ENOENT, "no format loader found");
   return false;
 }
 

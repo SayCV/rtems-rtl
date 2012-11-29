@@ -26,6 +26,27 @@ extern "C" {
 #endif /* __cplusplus */
 
 /**
+ * The type of the format loader check handler. This handler checks the format
+ * and if it is detected as suitable it returns true.
+ */
+typedef bool (*rtems_rtl_loader_check)(rtems_rtl_obj_t* obj, int fd);
+
+/**
+ * The type of the format loader handler. This handler loads the specific
+ * format.
+ */
+typedef bool (*rtems_rtl_loader_load)(rtems_rtl_obj_t* obj, int fd);
+
+/**
+ * Table for supported loadable formats.
+ */
+typedef struct rtems_rtl_loader_table_s
+{
+  rtems_rtl_loader_check check; /**< The check handler. */
+  rtems_rtl_loader_load  load;  /**< The loader. */
+} rtems_rtl_loader_table_t;
+
+/**
  * Flags for the various section types.
  */
 #define RTEMS_RTL_OBJ_SECT_TEXT  (1 << 0)  /**< Section holds program text. */

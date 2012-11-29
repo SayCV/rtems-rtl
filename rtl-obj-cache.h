@@ -93,8 +93,9 @@ void rtems_rtl_obj_cache_flush (rtems_rtl_obj_cache_t* cache);
  * and size is past the end of the file.
  *
  * @param cache The cache to reference data from.
- * @param fs The file descriptor. Must be an open file.
+ * @param fd The file descriptor. Must be an open file.
  * @param offset The offset in the file to reference the data to.
+ * @param buffer The location to reference the data from.
  * @param length The length of data to reference. Can be modified to a
  *               lesser value and true is still returned so check it.
  * @retval true The data referenced is in the cache.
@@ -110,8 +111,9 @@ bool rtems_rtl_obj_cache_read (rtems_rtl_obj_cache_t* cache,
  * Read data by value. The data is copied to the user supplied buffer.
  *
  * @param cache The cache to read the data from.
- * @param fs The file descriptor. Must be an open file.
+ * @param fd The file descriptor. Must be an open file.
  * @param offset The offset in the file to read the data from.
+ * @param buffer The location the data is written into.
  * @param length The length of data to read.
  * @retval true The data has been read from the cache.
  * @retval false The read failed and the RTL error has been set.

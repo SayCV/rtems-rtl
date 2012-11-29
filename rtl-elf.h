@@ -128,6 +128,22 @@ bool rtems_rtl_elf_find_symbol (rtems_rtl_obj_t* obj,
                                 const char*      symname,
                                 Elf_Word*        value);
 
+/**
+ * The ELF format check handler.
+ *
+ * @param obj The object being checked.
+ * @param fd The file descriptor.
+ */
+bool rtems_rtl_elf_file_check (rtems_rtl_obj_t* obj, int fd);
+
+/**
+ * The ELF format load handler.
+ *
+ * @param obj The object to load.
+ * @param fd The file descriptor.
+ */
+bool rtems_rtl_elf_file_load (rtems_rtl_obj_t* obj, int fd);
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

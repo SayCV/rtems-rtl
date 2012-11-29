@@ -26,6 +26,7 @@
 #include <rtl-fwd.h>
 #include <rtl-obj.h>
 #include <rtl-obj-cache.h>
+#include <rtl-obj-comp.h>
 #include <rtl-unresolved.h>
 
 #ifdef __cplusplus
@@ -93,6 +94,7 @@ struct rtems_rtl_data_s
   rtems_rtl_obj_cache_t  symbols;        /**< Symbols object file cache. */
   rtems_rtl_obj_cache_t  strings;        /**< Strings object file cache. */
   rtems_rtl_obj_cache_t  relocs;         /**< Relocations object file cache. */
+  rtems_rtl_obj_comp_t   decomp;         /**< The decompression compressor. */
   int                    last_errno;     /**< Last error number. */
   char                   last_error[64]; /**< Last error string. */
 };
@@ -142,6 +144,21 @@ void rtems_rtl_obj_caches (rtems_rtl_obj_cache_t** symbols,
  * Flush all the object file caches.
  */
 void rtems_rtl_obj_caches_flush (void);
+
+/**
+ * Get the RTL decompressor setting the cache and the offset in the file the
+ * compressed stream starts. This call assmes the RTL is locked.
+ *
+ * @param decomp Pointer to the location to set the compressor into. Returns
+ *               NULL is rtl is not initialised.
+ * @param cache The cache to read the file with. Saves needing an extrs buffer.
+ * @param offset The offset in the file the compressed stream starts.
+ */
+void rtems_rtl_obj_comp (rtems_rtl_obj_comp_t** decomp,
+                         rtems_rtl_obj_cache_t* cache,
+                         int                    fd,
+                         int                    compression,
+                         off_t                  offset);
 
 /**
  * Lock the Run-time Linker.

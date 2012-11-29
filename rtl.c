@@ -54,6 +54,11 @@
 #define RTEMS_RTL_ELF_RELOC_CACHE (2048)
 
 /**
+ * Decompression output buffer.
+ */
+#define RTEMS_RTL_COMP_OUTPUT (2048)
+
+/**
  * Static RTL data is returned to the user when the linker is locked.
  */
 static rtems_rtl_data_t* rtl;
@@ -183,9 +188,23 @@ rtems_rtl_data_init (void)
         return false;
       }
 
+      if (!rtems_rtl_obj_comp_open (&rtl->decomp,
+                                    RTEMS_RTL_COMP_OUTPUT))
+      {
+        rtems_rtl_obj_cache_close (&rtl->relocs);
+        rtems_rtl_obj_cache_close (&rtl->strings);
+        rtems_rtl_obj_cache_close (&rtl->symbols);
+        rtems_rtl_unresolved_table_close (&rtl->unresolved);
+        rtems_rtl_symbol_table_close (&rtl->globals);
+        rtems_semaphore_delete (lock);
+        free (rtl);
+        return false;
+      }
+
       rtl->base = rtems_rtl_obj_alloc ();
       if (!rtl->base)
       {
+        rtems_rtl_obj_comp_close (&rtl->decomp);
         rtems_rtl_obj_cache_close (&rtl->relocs);
         rtems_rtl_obj_cache_close (&rtl->strings);
         rtems_rtl_obj_cache_close (&rtl->symbols);
@@ -276,6 +295,24 @@ rtems_rtl_obj_caches_flush ()
     rtems_rtl_obj_cache_flush (&rtl->symbols);
     rtems_rtl_obj_cache_flush (&rtl->strings);
     rtems_rtl_obj_cache_flush (&rtl->relocs);
+  }
+}
+
+void
+rtems_rtl_obj_comp (rtems_rtl_obj_comp_t** decomp,
+                    rtems_rtl_obj_cache_t* cache,
+                    int                    fd,
+                    int                    compression,
+                    off_t                  offset)
+{
+  if (!rtl)
+  {
+    *decomp = NULL;
+  }
+  else
+  {
+    *decomp = &rtl->decomp;
+    rtems_rtl_obj_comp_set (*decomp, cache, fd, compression, offset);
   }
 }
 

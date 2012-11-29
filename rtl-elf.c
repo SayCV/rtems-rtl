@@ -622,7 +622,38 @@ rtems_rtl_elf_parse_sections (rtems_rtl_obj_t* obj, int fd, Elf_Ehdr* ehdr)
 }
 
 bool
-rtems_rtl_obj_file_load (rtems_rtl_obj_t* obj, int fd)
+rtems_rtl_elf_file_check (rtems_rtl_obj_t* obj, int fd)
+{
+  rtems_rtl_obj_cache_t* header;
+  Elf_Ehdr               ehdr;
+
+  rtems_rtl_obj_caches (&header, NULL, NULL);
+
+  if (!rtems_rtl_obj_cache_read_byval (header, fd, obj->ooffset,
+                                       &ehdr, sizeof (ehdr)))
+    return false;
+
+  /*
+   * Check we have a valid ELF file.
+   */
+  if ((memcmp (ELFMAG, ehdr.e_ident, SELFMAG) != 0)
+      || ehdr.e_ident[EI_CLASS] != ELFCLASS)
+  {
+    return false;
+  }
+
+  if ((ehdr.e_ident[EI_VERSION] != EV_CURRENT)
+      || (ehdr.e_version != EV_CURRENT)
+      || (ehdr.e_ident[EI_DATA] != ELFDEFNNAME (MACHDEP_ENDIANNESS)))
+  {
+    return false;
+  }
+
+  return true;
+}
+
+bool
+rtems_rtl_elf_file_load (rtems_rtl_obj_t* obj, int fd)
 {
   rtems_rtl_obj_cache_t* header;
   Elf_Ehdr               ehdr;

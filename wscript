@@ -47,7 +47,9 @@ def build(bld):
     bld.includes = ['.',
                     'libbsd/include',
                     'libbsd/include/arch/' + arch]
-    bld.defines = ['PACKAGE_VERSION="' + version + '"']
+    bld.defines = ['PACKAGE_VERSION="' + version + '"',
+                   'RTEMS_RTL_ELF_LOADER=1',
+                   'RTEMS_RTL_RAP_LOADER=1']
     bld.cflags = ['-g']
 
     #
@@ -74,6 +76,7 @@ def build(bld):
         target = 'rtl',
         includes = bld.includes,
         cflags = bld.cflags,
+        defines = bld.defines,
         source = ['dlfcn.c',
                   'dlfcn-shell.c',
                   'fastlz.c',
@@ -86,6 +89,8 @@ def build(bld):
                   'rtl-error.c',
                   'rtl-obj.c',
                   'rtl-obj-cache.c',
+                  'rtl-obj-comp.c',
+                  'rtl-rap.c',
                   'rtl-shell.c',
                   'rtl-string.c',
                   'rtl-sym.c',
