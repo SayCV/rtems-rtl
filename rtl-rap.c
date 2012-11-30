@@ -183,6 +183,15 @@ rtems_rtl_rap_read_uint32 (rtems_rtl_obj_comp_t* comp, uint32_t* value)
 }
 
 static bool
+rtems_rtl_rap_loader (rtems_rtl_obj_t*      obj,
+                      int                   fd,
+                      rtems_rtl_obj_sect_t* sect,
+                      void*                 data)
+{
+  return true;
+}
+
+static bool
 rtems_rtl_rap_symbols (rtems_rtl_obj_t*      obj,
                        int                   fd,
                        rtems_rtl_obj_sect_t* sect,
@@ -440,7 +449,7 @@ rtems_rtl_rap_file_load (rtems_rtl_obj_t* obj, int fd)
 
   /** obj->entry = (void*)(uintptr_t) ehdr.e_entry; */
 
-  if (!rtems_rtl_obj_load_sections (obj, fd))
+  if (!rtems_rtl_obj_load_sections (obj, fd, rtems_rtl_rap_loader, &rap))
     return false;
 
   if (!rtems_rtl_obj_load_symbols (obj, fd, rtems_rtl_rap_symbols, &rap))

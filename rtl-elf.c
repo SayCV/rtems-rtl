@@ -493,6 +493,39 @@ rtems_rtl_elf_symbols (rtems_rtl_obj_t*      obj,
 }
 
 static bool
+rtems_rtl_elf_loader (rtems_rtl_obj_t*      obj,
+                      int                   fd,
+                      rtems_rtl_obj_sect_t* sect,
+                      void*                 data)
+{
+  uint8_t* base_offset;
+  size_t   len;
+
+  if (lseek (fd, obj->ooffset + sect->offset, SEEK_SET) < 0)
+  {
+    rtems_rtl_set_error (errno, "section load seek failed");
+    return false;
+  }
+
+  base_offset = sect->base;
+  len = sect->size;
+
+  while (len)
+  {
+    ssize_t r = read (fd, base_offset, len);
+    if (r <= 0)
+    {
+      rtems_rtl_set_error (errno, "section load read failed");
+      return false;
+    }
+    base_offset += r;
+    len -= r;
+  }
+
+  return true;
+}
+
+static bool
 rtems_rtl_elf_parse_sections (rtems_rtl_obj_t* obj, int fd, Elf_Ehdr* ehdr)
 {
   rtems_rtl_obj_cache_t* sects;
@@ -716,7 +749,7 @@ rtems_rtl_elf_file_load (rtems_rtl_obj_t* obj, int fd)
 
   obj->entry = (void*)(uintptr_t) ehdr.e_entry;
 
-  if (!rtems_rtl_obj_load_sections (obj, fd))
+  if (!rtems_rtl_obj_load_sections (obj, fd, rtems_rtl_elf_loader, &ehdr))
     return false;
 
   if (!rtems_rtl_obj_load_symbols (obj, fd, rtems_rtl_elf_symbols, &ehdr))

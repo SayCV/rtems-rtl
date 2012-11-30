@@ -619,65 +619,52 @@ rtems_rtl_obj_load_symbols (rtems_rtl_obj_t*             obj,
 }
 
 static size_t
-rtems_rtl_obj_sections_loader (rtems_chain_control* sections,
-                               uint32_t             mask,
-                               int                  fd,
-                               off_t                offset,
-                               uint8_t*             base)
+rtems_rtl_obj_sections_loader (uint32_t                     mask,
+                               rtems_rtl_obj_t*             obj,
+                               int                          fd,
+                               uint8_t*                     base,
+                               rtems_rtl_obj_sect_handler_t handler,
+                               void*                        data)
 {
-  rtems_chain_node* node = rtems_chain_first (sections);
-  size_t            base_offset = 0;
-  bool              first = true;
+  rtems_chain_control* sections = &obj->sections;
+  rtems_chain_node*    node = rtems_chain_first (sections);
+  size_t               base_offset = 0;
+  bool                 first = true;
   while (!rtems_chain_is_tail (sections, node))
   {
     rtems_rtl_obj_sect_t* sect = (rtems_rtl_obj_sect_t*) node;
 
     if ((sect->size != 0) && ((sect->flags & mask) != 0))
     {
-      uint8_t* sect_base = base + base_offset;
-
       if (!first)
         base_offset = rtems_rtl_sect_align (base_offset, sect->alignment);
 
+      sect->base = base + base_offset;
+
       if (rtems_rtl_trace (RTEMS_RTL_TRACE_LOAD_SECT))
         printf ("rtl: loading: %s -> %8p (%zi)\n",
-                sect->name, base + base_offset, sect->size);
+                sect->name, sect->base, sect->size);
 
       if ((sect->flags & RTEMS_RTL_OBJ_SECT_LOAD) == RTEMS_RTL_OBJ_SECT_LOAD)
       {
-        size_t len;
-
-        if (lseek (fd, offset + sect->offset, SEEK_SET) < 0)
+        if (!handler (obj, fd, sect, data))
         {
-          rtems_rtl_set_error (errno, "section load seek failed");
+          sect->base = 0;
           return false;
-        }
-
-        len = sect->size;
-        while (len)
-        {
-          ssize_t r = read (fd, base + base_offset, len);
-          if (r <= 0)
-          {
-            rtems_rtl_set_error (errno, "section load read failed");
-            return false;
-          }
-          base_offset += r;
-          len -= r;
         }
       }
       else if ((sect->flags & RTEMS_RTL_OBJ_SECT_ZERO) == RTEMS_RTL_OBJ_SECT_ZERO)
       {
         memset (base + base_offset, 0, sect->size);
-        base_offset += sect->size;
       }
       else
       {
+        sect->base = 0;
         rtems_rtl_set_error (errno, "section has no load op");
         return false;
       }
 
-      sect->base = sect_base;
+      base_offset += sect->size;
       first = false;
     }
 
@@ -688,7 +675,10 @@ rtems_rtl_obj_sections_loader (rtems_chain_control* sections,
 }
 
 bool
-rtems_rtl_obj_load_sections (rtems_rtl_obj_t* obj, int fd)
+rtems_rtl_obj_load_sections (rtems_rtl_obj_t*             obj,
+                             int                          fd,
+                             rtems_rtl_obj_sect_handler_t handler,
+                             void*                        data)
 {
   size_t text_size;
   size_t const_size;
@@ -732,14 +722,14 @@ rtems_rtl_obj_load_sections (rtems_rtl_obj_t* obj, int fd)
    * Load all text then data then bss sections in seperate operations so each
    * type of section is grouped together.
    */
-  if (!rtems_rtl_obj_sections_loader (&obj->sections, RTEMS_RTL_OBJ_SECT_TEXT,
-                                      fd, obj->ooffset, obj->text_base) ||
-      !rtems_rtl_obj_sections_loader (&obj->sections, RTEMS_RTL_OBJ_SECT_CONST,
-                                      fd, obj->ooffset, obj->const_base) ||
-      !rtems_rtl_obj_sections_loader (&obj->sections, RTEMS_RTL_OBJ_SECT_DATA,
-                                      fd, obj->ooffset, obj->data_base) ||
-      !rtems_rtl_obj_sections_loader (&obj->sections, RTEMS_RTL_OBJ_SECT_BSS,
-                                      fd, obj->ooffset, obj->bss_base))
+  if (!rtems_rtl_obj_sections_loader (RTEMS_RTL_OBJ_SECT_TEXT,
+                                      obj, fd, obj->text_base, handler, data) ||
+      !rtems_rtl_obj_sections_loader (RTEMS_RTL_OBJ_SECT_CONST,
+                                      obj, fd, obj->const_base, handler, data) ||
+      !rtems_rtl_obj_sections_loader (RTEMS_RTL_OBJ_SECT_DATA,
+                                      obj, fd, obj->data_base, handler, data) ||
+      !rtems_rtl_obj_sections_loader (RTEMS_RTL_OBJ_SECT_BSS,
+                                      obj, fd, obj->bss_base, handler, data))
   {
     rtems_rtl_alloc_module_del (&obj->text_base, &obj->const_base,
                                 &obj->data_base, &obj->bss_base);

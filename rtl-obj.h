@@ -55,7 +55,7 @@ typedef struct rtems_rtl_loader_table_s
 #define RTEMS_RTL_OBJ_SECT_BSS   (1 << 3)  /**< Section holds program bss. */
 #define RTEMS_RTL_OBJ_SECT_REL   (1 << 4)  /**< Section holds relocation records. */
 #define RTEMS_RTL_OBJ_SECT_RELA  (1 << 5)  /**< Section holds relocation addend
-                                            * records. */
+                                            *   records. */
 #define RTEMS_RTL_OBJ_SECT_SYM   (1 << 6)  /**< Section holds symbols. */
 #define RTEMS_RTL_OBJ_SECT_STR   (1 << 7)  /**< Section holds strings. */
 #define RTEMS_RTL_OBJ_SECT_ALLOC (1 << 8)  /**< Section allocates runtime memory. */
@@ -84,7 +84,7 @@ struct rtems_rtl_obj_sect_s
   int              info;        /**< Secfion info field. */
   uint32_t         flags;       /**< The section's flags. */
   void*            base;        /**< The base address of the section in
-                                 * memory. */
+                                 *   memory. */
 };
 
 /**
@@ -470,10 +470,15 @@ bool rtems_rtl_obj_load_symbols (rtems_rtl_obj_t*             obj,
  *
  * @param obj The object file's descriptor.
  * @param fd The object file's file descriptor.
+ * @param handler The object file's format specific load handler.
+ * @param data User specific data handle.
  * @retval true The object has been sucessfully loaded.
  * @retval false The load failed. The RTL error has been set.
  */
-bool rtems_rtl_obj_load_sections (rtems_rtl_obj_t* obj, int fd);
+bool rtems_rtl_obj_load_sections (rtems_rtl_obj_t*             obj,
+                                  int                          fd,
+                                  rtems_rtl_obj_sect_handler_t handler,
+                                  void*                        data);
 
 /**
  * Invoke the constructors the object has. Constructors are a table of pointers
