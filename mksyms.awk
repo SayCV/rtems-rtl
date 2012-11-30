@@ -63,10 +63,10 @@ BEGIN {
   FS = "[ \t\n]";
   OFS = " ";
   started = 0
-  embed = 0
+  embed = 1
   for (a = 0; a < ARGC; ++a)
   {
-    if (ARGV[a] == "--embed")
+    if (ARGV[a] == "--no-embed")
     {
       embed = 1
       delete ARGV[a];
