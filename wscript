@@ -28,7 +28,7 @@ def options(opt):
 def configure(conf):
     conf.find_program('awk')
     conf.env.GSYMS_AWK = '%s/mksyms.awk' % (conf.srcnode.abspath())
-    conf.env.GSYMS_FLAGS = ['--', '--embed']
+    conf.env.GSYMS_FLAGS = []
 
     conf.env.ASCIIDOC = conf.find_program(['asciidoc.py'], mandatory = False)
     conf.env.ASCIIDOC_FLAGS = ['-b', 'html', '-a', 'data-uri', '-a', 'icons', '-a', 'max-width=55em-a']
