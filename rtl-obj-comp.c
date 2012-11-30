@@ -101,8 +101,6 @@ rtems_rtl_obj_comp_read (rtems_rtl_obj_comp_t* comp,
     {
       memcpy (buffer, comp->buffer, buffer_level);
 
-      length -= buffer_level;
-
       if ((comp->level - buffer_level) != 0)
       {
         memmove (comp->buffer,
@@ -110,14 +108,15 @@ rtems_rtl_obj_comp_read (rtems_rtl_obj_comp_t* comp,
                  comp->level - buffer_level);
       }
 
+      length -= buffer_level;
       comp->level -= buffer_level;
     }
 
     if (length)
     {
       uint8_t* input = NULL;
-      size_t   in_length;
       uint16_t block_size;
+      size_t   in_length = sizeof (block_size);
       int      decompressed;
 
       if (!rtems_rtl_obj_cache_read (comp->cache, comp->fd, comp->offset,
