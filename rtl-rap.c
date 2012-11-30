@@ -51,19 +51,6 @@ typedef struct rtems_rtl_rap_sectdef_s
 } rtems_rtl_rap_sectdef_t;
 
 /**
- * The sections as loaded from a RAP file.
- */
-static const rtems_rtl_rap_sectdef_t rap_sections[6] =
-{
-  { ".text",  RTEMS_RTL_OBJ_SECT_TEXT  | RTEMS_RTL_OBJ_SECT_LOAD },
-  { ".const", RTEMS_RTL_OBJ_SECT_CONST | RTEMS_RTL_OBJ_SECT_LOAD },
-  { ".ctor",  RTEMS_RTL_OBJ_SECT_CONST | RTEMS_RTL_OBJ_SECT_LOAD | RTEMS_RTL_OBJ_SECT_CTOR },
-  { ".dtor",  RTEMS_RTL_OBJ_SECT_CONST | RTEMS_RTL_OBJ_SECT_LOAD | RTEMS_RTL_OBJ_SECT_DTOR },
-  { ".data",  RTEMS_RTL_OBJ_SECT_DATA  | RTEMS_RTL_OBJ_SECT_LOAD },
-  { ".bss",   RTEMS_RTL_OBJ_SECT_BSS   | RTEMS_RTL_OBJ_SECT_ZERO }
-};
-
-/**
  * The section indexes. These are fixed.
  */
 #define RTEMS_RTL_RAP_TEXT_SEC  (0)
@@ -75,9 +62,17 @@ static const rtems_rtl_rap_sectdef_t rap_sections[6] =
 #define RTEMS_RTL_RAP_SECS      (6)
 
 /**
- * The number of RAP sections to load.
+ * The sections as loaded from a RAP file.
  */
-#define RAP_SECTIONS (sizeof (rap_sections) / sizeof (rtems_rtl_rap_section_t))
+static const rtems_rtl_rap_sectdef_t rap_sections[RTEMS_RTL_RAP_SECS] =
+{
+  { ".text",  RTEMS_RTL_OBJ_SECT_TEXT  | RTEMS_RTL_OBJ_SECT_LOAD },
+  { ".const", RTEMS_RTL_OBJ_SECT_CONST | RTEMS_RTL_OBJ_SECT_LOAD },
+  { ".ctor",  RTEMS_RTL_OBJ_SECT_CONST | RTEMS_RTL_OBJ_SECT_LOAD | RTEMS_RTL_OBJ_SECT_CTOR },
+  { ".dtor",  RTEMS_RTL_OBJ_SECT_CONST | RTEMS_RTL_OBJ_SECT_LOAD | RTEMS_RTL_OBJ_SECT_DTOR },
+  { ".data",  RTEMS_RTL_OBJ_SECT_DATA  | RTEMS_RTL_OBJ_SECT_LOAD },
+  { ".bss",   RTEMS_RTL_OBJ_SECT_BSS   | RTEMS_RTL_OBJ_SECT_ZERO }
+};
 
 /**
  * The section definitions found in a RAP file.
@@ -103,7 +98,12 @@ typedef struct rtems_rtl_rap_s
   uint32_t                machinetype;  /**< The ELF machine type. */
   uint32_t                datatype;     /**< The ELF data type. */
   uint32_t                class;        /**< The ELF class. */
+  uint32_t                init;         /**< The initialisation strtab offset. */
+  uint32_t                fini;         /**< The finish strtab offset. */
   rtems_rtl_rap_section_t secs[RTEMS_RTL_RAP_SECS]; /**< The sections. */
+  uint32_t                symtab_size;  /**< The symbol table size. */
+  uint32_t                strtab_size;  /**< The string table size. */
+  uint32_t                relocs_size;  /**< The relocation table size. */
 } rtems_rtl_rap_t;
 
 /**
@@ -188,7 +188,8 @@ rtems_rtl_rap_loader (rtems_rtl_obj_t*      obj,
                       rtems_rtl_obj_sect_t* sect,
                       void*                 data)
 {
-  return true;
+  rtems_rtl_rap_t* rap = (rtems_rtl_rap_t*) data;
+  return rtems_rtl_obj_comp_read (rap->decomp, sect->base, sect->size);
 }
 
 static bool
@@ -331,6 +332,7 @@ rtems_rtl_rap_file_load (rtems_rtl_obj_t* obj, int fd)
   rtems_rtl_rap_t rap = { 0 };
   uint8_t*        rhdr = NULL;
   size_t          rlen = 64;
+  uint32_t        script_length = 0;
   int             section;
 
   rtems_rtl_obj_caches (&rap.file, NULL, NULL);
@@ -398,6 +400,29 @@ rtems_rtl_rap_file_load (rtems_rtl_obj_t* obj, int fd)
   }
 
   /*
+   * uint32_t: init
+   * uint32_t: fini
+   * uint32_t: symtabl_size
+   * uint32_t: strtab_size
+   * uint32_t: relocs_size
+   */
+
+  if (!rtems_rtl_rap_read_uint32 (rap.decomp, &rap.init))
+    return false;
+
+  if (!rtems_rtl_rap_read_uint32 (rap.decomp, &rap.fini))
+    return false;
+
+  if (!rtems_rtl_rap_read_uint32 (rap.decomp, &rap.symtab_size))
+    return false;
+
+  if (!rtems_rtl_rap_read_uint32 (rap.decomp, &rap.strtab_size))
+    return false;
+
+  if (!rtems_rtl_rap_read_uint32 (rap.decomp, &rap.relocs_size))
+    return false;
+
+  /*
    * uint32_t: text_size
    * uint32_t: text_alignment
    * uint32_t: text_offset
@@ -418,7 +443,7 @@ rtems_rtl_rap_file_load (rtems_rtl_obj_t* obj, int fd)
    * uint32_t: bss_offset
    */
 
-  for (section = 0; section < RAP_SECTIONS; ++section)
+  for (section = 0; section < RTEMS_RTL_RAP_SECS; ++section)
   {
     if (!rtems_rtl_rap_read_uint32 (rap.decomp, &rap.secs[section].size))
       return false;
@@ -429,7 +454,7 @@ rtems_rtl_rap_file_load (rtems_rtl_obj_t* obj, int fd)
     if (!rtems_rtl_rap_read_uint32 (rap.decomp, &rap.secs[section].offset))
       return false;
 
-    if (rtems_rtl_trace (RTEMS_RTL_TRACE_LOAD))
+    if (rtems_rtl_trace (RTEMS_RTL_TRACE_LOAD_SECT))
       printf ("rtl: rap: %s: size=%lu align=%lu off=%lu\n",
               rap_sections[section].name,
               rap.secs[section].size,
