@@ -104,6 +104,7 @@ typedef struct rtems_rtl_rap_s
   uint32_t                symtab_size;  /**< The symbol table size. */
   uint32_t                strtab_size;  /**< The string table size. */
   uint32_t                relocs_size;  /**< The relocation table size. */
+  uint32_t                symbols;      /**< The number of symbols. */
 } rtems_rtl_rap_t;
 
 /**
@@ -207,6 +208,98 @@ rtems_rtl_rap_relocator (rtems_rtl_obj_t*      obj,
                          rtems_rtl_obj_sect_t* sect,
                          void*                 data)
 {
+  return true;
+}
+
+static bool
+rtems_rtl_rap_load_symbols (rtems_rtl_rap_t* rap, rtems_rtl_obj_t* obj)
+{
+  char*                string;
+  rtems_rtl_obj_sym_t* gsym;
+  int                  sym;
+
+  obj->global_size =
+    rap->symbols * sizeof (rtems_rtl_obj_sym_t) + rap->strtab_size;
+
+  obj->global_table = rtems_rtl_alloc_new (RTEMS_RTL_ALLOC_SYMBOL,
+                                           obj->global_size, true);
+  if (!obj->global_table)
+  {
+    obj->global_size = 0;
+    rtems_rtl_set_error (ENOMEM, "no memory for obj global syms");
+    return false;
+  }
+
+  obj->global_syms = rap->symbols;
+
+  string = (((char*) obj->global_table) +
+            (rap->symbols * sizeof (rtems_rtl_obj_sym_t)));
+
+  if (!rtems_rtl_obj_comp_read (rap->decomp, string, rap->strtab_size))
+    return false;
+
+  for (sym = 0, gsym = obj->global_table; sym < rap->symbols; ++sym)
+  {
+    rtems_rtl_obj_sect_t* symsect;
+    uint32_t              data;
+    uint32_t              name;
+    uint32_t              value;
+
+    if (!rtems_rtl_rap_read_uint32 (rap->decomp, &data) ||
+        !rtems_rtl_rap_read_uint32 (rap->decomp, &name) ||
+        !rtems_rtl_rap_read_uint32 (rap->decomp, &value))
+    {
+      free (obj->global_table);
+      obj->global_table = NULL;
+      obj->global_syms = 0;
+      obj->global_size = 0;
+      return false;
+    }
+
+    /*
+     * If there is a globally exported symbol already present and this
+     * symbol is not weak raise an error. If the symbol is weak and present
+     * globally ignore this symbol and use the global one and if it is not
+     * present take this symbol global or weak. We accept the first weak
+     * symbol we find and make it globally exported.
+     */
+    if (rtems_rtl_symbol_global_find (string) &&
+        (ELF_ST_BIND (data & 0xffff) != STB_WEAK))
+    {
+      free (obj->global_table);
+      obj->global_table = NULL;
+      obj->global_syms = 0;
+      obj->global_size = 0;
+      rtems_rtl_set_error (ENOMEM, "duplicate global symbol: %s", string);
+      return false;
+    }
+
+    symsect = rtems_rtl_obj_find_section_by_index (obj, data >> 16);
+    if (!symsect)
+    {
+      free (obj->global_table);
+      obj->global_table = NULL;
+      obj->global_syms = 0;
+      obj->global_size = 0;
+      return false;
+    }
+
+    rtems_chain_set_off_chain (&gsym->node);
+    gsym->name = string;
+    gsym->value = (uint8_t*) (value + symsect->base);
+    gsym->data = data & 0xffff;
+
+    if (rtems_rtl_trace (RTEMS_RTL_TRACE_SYMBOL))
+      printf ("rtl: sym:add:%-2d name:%-20s bind:%-2d type:%-2d val:%8p sect:%d\n",
+              sym, gsym->name,
+              (int) ELF_ST_BIND (data & 0xffff),
+              (int) ELF_ST_TYPE (data & 0xffff),
+              gsym->value, (int) (data >> 16));
+
+    string += strlen (string) + 1;
+    ++gsym;
+  }
+
   return true;
 }
 
@@ -332,7 +425,6 @@ rtems_rtl_rap_file_load (rtems_rtl_obj_t* obj, int fd)
   rtems_rtl_rap_t rap = { 0 };
   uint8_t*        rhdr = NULL;
   size_t          rlen = 64;
-  uint32_t        script_length = 0;
   int             section;
 
   rtems_rtl_obj_caches (&rap.file, NULL, NULL);
@@ -422,6 +514,8 @@ rtems_rtl_rap_file_load (rtems_rtl_obj_t* obj, int fd)
   if (!rtems_rtl_rap_read_uint32 (rap.decomp, &rap.relocs_size))
     return false;
 
+  rap.symbols = rap.symtab_size / (3 * sizeof (uint32_t));
+
   /*
    * uint32_t: text_size
    * uint32_t: text_alignment
@@ -477,7 +571,7 @@ rtems_rtl_rap_file_load (rtems_rtl_obj_t* obj, int fd)
   if (!rtems_rtl_obj_load_sections (obj, fd, rtems_rtl_rap_loader, &rap))
     return false;
 
-  if (!rtems_rtl_obj_load_symbols (obj, fd, rtems_rtl_rap_symbols, &rap))
+  if (!rtems_rtl_rap_load_symbols (&rap, obj))
     return false;
 
   if (!rtems_rtl_obj_relocate (obj, fd, rtems_rtl_rap_relocator, &rap))
