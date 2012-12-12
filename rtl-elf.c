@@ -148,7 +148,7 @@ rtems_rtl_elf_relocator (rtems_rtl_obj_t*      obj,
     const char*     symname = NULL;
     off_t           off;
     Elf_Word        type;
-    Elf_Word        symvalue;
+    Elf_Word        symvalue = 0;
     bool            relocate;
 
     off = obj->ooffset + sect->offset + (reloc * reloc_size);
@@ -234,9 +234,9 @@ rtems_rtl_elf_relocator (rtems_rtl_obj_t*      obj,
       if (is_rela)
       {
         if (rtems_rtl_trace (RTEMS_RTL_TRACE_RELOC))
-          printf ("rtl: rela: sym:%s(%-2d) type:%-2d off:%08lx addend:%d\n",
-                  symname, (int) ELF_R_SYM (rela->r_info), (int) ELF_R_TYPE (rela->r_info),
-                  rela->r_offset, (int) rela->r_addend);
+          printf ("rtl: rela: sym:%s(%-2d)=%08lx type:%-2d off:%08lx addend:%d\n",
+                  symname, (int) ELF_R_SYM (rela->r_info), symvalue,
+                  (int) ELF_R_TYPE (rela->r_info), rela->r_offset, (int) rela->r_addend);
         if (!rtems_rtl_elf_relocate_rela (obj, rela, targetsect,
                                           symname, sym.st_info, symvalue))
           return false;
@@ -244,9 +244,9 @@ rtems_rtl_elf_relocator (rtems_rtl_obj_t*      obj,
       else
       {
         if (rtems_rtl_trace (RTEMS_RTL_TRACE_RELOC))
-          printf ("rtl: rel: sym:%s(%-2d) type:%-2d off:%08lx\n",
-                  symname, (int) ELF_R_SYM (rel->r_info), (int) ELF_R_TYPE (rel->r_info),
-                  rel->r_offset);
+          printf ("rtl: rel: sym:%s(%-2d)=%08lx type:%-2d off:%08lx\n",
+                  symname, (int) ELF_R_SYM (rel->r_info), symvalue,
+                  (int) ELF_R_TYPE (rel->r_info), rel->r_offset);
         if (!rtems_rtl_elf_relocate_rel (obj, rel, targetsect,
                                          symname, sym.st_info, symvalue))
           return false;
