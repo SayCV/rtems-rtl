@@ -6,6 +6,7 @@
 import os
 import os.path
 import pkgconfig
+import re
 import subprocess
 
 default_version = '4.11'
@@ -145,14 +146,9 @@ def configure(conf):
         conf.env.LIB = flags['LIB']
 
         #
-        # Hack to work around NIOS2 naming.
+        # Add tweaks.
         #
-        if conf.env.RTEMS_ARCH in ['nios2']:
-            conf.env.OBJCOPY_FLAGS = ['-O', 'elf32-littlenios2']
-        elif conf.env.RTEMS_ARCH in ['arm']:
-            conf.env.OBJCOPY_FLAGS = ['-I', 'binary', '-O', 'elf32-littlearm']
-        else:
-            conf.env.OBJCOPY_FLAGS = ['-O', 'elf32-' + conf.env.RTEMS_ARCH]
+        tweaks(conf, ab)
 
         conf.env.SHOW_COMMANDS = show_commands
 
@@ -167,6 +163,23 @@ def configure(conf):
 def build(bld):
     if bld.env.SHOW_COMMANDS == 'yes':
         output_command_line()
+
+def tweaks(conf, arch_bsp):
+    #
+    # Hack to work around NIOS2 naming.
+    #
+    if conf.env.RTEMS_ARCH in ['nios2']:
+        conf.env.OBJCOPY_FLAGS = ['-O', 'elf32-littlenios2']
+    elif conf.env.RTEMS_ARCH in ['arm']:
+        conf.env.OBJCOPY_FLAGS = ['-I', 'binary', '-O', 'elf32-littlearm']
+    else:
+        conf.env.OBJCOPY_FLAGS = ['-O', 'elf32-' + conf.env.RTEMS_ARCH]
+
+    #
+    # Check for a i386 PC bsp.
+    #
+    if re.match('i386-.*-pc[3456]86', arch_bsp) is not None:
+        conf.env.LINKFLAGS += ['-Wl,-Ttext,0x00100000']
 
 def check_options(ctx, rtems_tools, rtems_path, rtems_version, rtems_archs, rtems_bsps):
     #
