@@ -70,7 +70,7 @@
 #define _RF_SZ(s) (((s) & 0xff) << 8)  /* memory target size */
 #define _RF_RS(s) ( (s) & 0xff)        /* right shift */
 
-static const int reloc_target_flags[] = {
+static const uint32_t reloc_target_flags[] = {
   0,                                             /* NONE */
   _RF_S|_RF_A|        _RF_SZ(8)  | _RF_RS(0),    /* RELOC_8 */
   _RF_S|_RF_A|        _RF_SZ(16) | _RF_RS(0),    /* RELOC_16 */
