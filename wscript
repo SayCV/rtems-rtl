@@ -54,6 +54,9 @@ def build(bld):
                    'RTEMS_RTL_RAP_LOADER=1']
     bld.cflags = ['-g', '-O']
 
+    if re.match('pc[3456]86', bsp) is not None:
+        bld.defines += ['RTEMS_APP_IDEDISK=1']
+
     #
     # The ARM as special BSP initialise code.
     #
