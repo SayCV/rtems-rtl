@@ -314,7 +314,7 @@ rtems_rtl_rap_relocate (rtems_rtl_rap_t* rap, rtems_rtl_obj_t* obj)
           return false;
         }
 
-        symvalue = (Elf_Word) symsect->base;
+        symvalue = (Elf_Word) symsect->base + addend;
       }
       else if (rtems_rtl_elf_rel_resolve_sym (type))
       {
@@ -450,6 +450,10 @@ rtems_rtl_rap_load_symbols (rtems_rtl_rap_t* rap, rtems_rtl_obj_t* obj)
       obj->global_size = 0;
       return false;
     }
+
+    if (rtems_rtl_trace (RTEMS_RTL_TRACE_SYMBOL))
+      printf ("rtl: sym:load: data=0x%08lx name=0x%08lx value=0x%08lx\n",
+              data, name, value);
 
     /*
      * If there is a globally exported symbol already present and this
@@ -715,22 +719,16 @@ rtems_rtl_rap_file_load (rtems_rtl_obj_t* obj, int fd)
   /*
    * uint32_t: text_size
    * uint32_t: text_alignment
-   * uint32_t: text_offset
    * uint32_t: const_size
    * uint32_t: const_alignment
-   * uint32_t: const_offset
    * uint32_t: ctor_size
    * uint32_t: ctor_alignment
-   * uint32_t: ctor_offset
    * uint32_t: dtor_size
    * uint32_t: dtor_alignment
-   * uint32_t: dtor_offset
    * uint32_t: data_size
    * uint32_t: data_alignment
-   * uint32_t: data_offset
    * uint32_t: bss_size
    * uint32_t: bss_alignment
-   * uint32_t: bss_offset
    */
 
   for (section = 0; section < RTEMS_RTL_RAP_SECS; ++section)
