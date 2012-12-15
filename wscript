@@ -171,7 +171,7 @@ def build(bld):
     bld(target = 'x.rap',
         features = 'c rap',
         xxxx = 'hello',
-        rtems_linkflags = ['-v', '--base', 'rtld.prelink',
+        rtems_linkflags = ['--base', 'rtld.prelink',
                            '--entry', 'my_main'],
         source = ['xa.c',
                   'x-long-name-to-create-gnu-extension-in-archive.c'])
