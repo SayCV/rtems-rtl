@@ -1,6 +1,7 @@
 #
 # Waf build script for the Run Time Link editor development project.
 #
+import re
 import rtems
 
 version = "1.0.0"
@@ -40,6 +41,7 @@ def build(bld):
 
     arch_bsp = bld.get_env()['RTEMS_ARCH_BSP']
     arch = bld.get_env()['RTEMS_ARCH']
+    bsp = bld.get_env()['RTEMS_BSP']
 
     #
     # The include paths and defines.
@@ -50,7 +52,7 @@ def build(bld):
     bld.defines = ['PACKAGE_VERSION="' + version + '"',
                    'RTEMS_RTL_ELF_LOADER=1',
                    'RTEMS_RTL_RAP_LOADER=1']
-    bld.cflags = ['-g']
+    bld.cflags = ['-g', '-O']
 
     #
     # The ARM as special BSP initialise code.
@@ -169,7 +171,7 @@ def build(bld):
     bld(target = 'x.rap',
         features = 'c rap',
         xxxx = 'hello',
-        rtems_linkflags = ['--base', 'rtld.prelink',
+        rtems_linkflags = ['-v', '--base', 'rtld.prelink',
                            '--entry', 'my_main'],
         source = ['xa.c',
                   'x-long-name-to-create-gnu-extension-in-archive.c'])
@@ -181,6 +183,8 @@ def build(bld):
                 target = 'fs-root-tarfile.o',
                 source = 'fs-root.tar',
                 rule = '${OBJCOPY} -I binary -B ${RTEMS_ARCH} ${OBJCOPY_FLAGS} ${SRC} ${TGT}')
+
+    bld.add_group ()
 
     bld(features = 'c cprogram',
         target = 'rtld',
@@ -196,6 +200,11 @@ def build(bld):
 
     if bld.env.ASCIIDOC:
         bld(target = 'rtems-rtl.html', source = 'rtems-rtl.txt')
+
+    if re.match('pc[3456]86', bsp) is not None:
+        bld(features = 'subst',
+            source = 'rtems-grub-h0-1.cfg',
+            target = 'rtems-grub.cfg')
 
 def rebuild(ctx):
     import waflib.Options
