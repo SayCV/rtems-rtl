@@ -197,6 +197,11 @@ rtems_rtl_rap_loader (rtems_rtl_obj_t*      obj,
                       void*                 data)
 {
   rtems_rtl_rap_t* rap = (rtems_rtl_rap_t*) data;
+
+  if (rtems_rtl_trace (RTEMS_RTL_TRACE_LOAD))
+    printf ("rtl: rap: input %s=%lu\n",
+            sect->name, rtems_rtl_obj_comp_input (rap->decomp));
+
   return rtems_rtl_obj_comp_read (rap->decomp, sect->base, sect->size);
 }
 
@@ -409,7 +414,6 @@ rtems_rtl_rap_relocate (rtems_rtl_rap_t* rap, rtems_rtl_obj_t* obj)
 static bool
 rtems_rtl_rap_load_symbols (rtems_rtl_rap_t* rap, rtems_rtl_obj_t* obj)
 {
-  char*                string;
   rtems_rtl_obj_sym_t* gsym;
   int                  sym;
 
@@ -427,10 +431,10 @@ rtems_rtl_rap_load_symbols (rtems_rtl_rap_t* rap, rtems_rtl_obj_t* obj)
 
   obj->global_syms = rap->symbols;
 
-  rap->strtab = string = (((char*) obj->global_table) +
-                          (rap->symbols * sizeof (rtems_rtl_obj_sym_t)));
+  rap->strtab = (((char*) obj->global_table) +
+                 (rap->symbols * sizeof (rtems_rtl_obj_sym_t)));
 
-  if (!rtems_rtl_obj_comp_read (rap->decomp, string, rap->strtab_size))
+  if (!rtems_rtl_obj_comp_read (rap->decomp, rap->strtab, rap->strtab_size))
     return false;
 
   for (sym = 0, gsym = obj->global_table; sym < rap->symbols; ++sym)
@@ -462,14 +466,15 @@ rtems_rtl_rap_load_symbols (rtems_rtl_rap_t* rap, rtems_rtl_obj_t* obj)
      * present take this symbol global or weak. We accept the first weak
      * symbol we find and make it globally exported.
      */
-    if (rtems_rtl_symbol_global_find (string) &&
+    if (rtems_rtl_symbol_global_find (rap->strtab + name) &&
         (ELF_ST_BIND (data & 0xffff) != STB_WEAK))
     {
       free (obj->global_table);
       obj->global_table = NULL;
       obj->global_syms = 0;
       obj->global_size = 0;
-      rtems_rtl_set_error (EINVAL, "duplicate global symbol: %s", string);
+      rtems_rtl_set_error (EINVAL,
+                           "duplicate global symbol: %s", rap->strtab + name);
       return false;
     }
 
@@ -485,7 +490,7 @@ rtems_rtl_rap_load_symbols (rtems_rtl_rap_t* rap, rtems_rtl_obj_t* obj)
     }
 
     rtems_chain_set_off_chain (&gsym->node);
-    gsym->name = string;
+    gsym->name = rap->strtab + name;
     gsym->value = (uint8_t*) (value + symsect->base);
     gsym->data = data & 0xffff;
 
@@ -496,7 +501,6 @@ rtems_rtl_rap_load_symbols (rtems_rtl_rap_t* rap, rtems_rtl_obj_t* obj)
               (int) ELF_ST_TYPE (data & 0xffff),
               gsym->value, (int) (data >> 16));
 
-    string += strlen (string) + 1;
     ++gsym;
   }
 
@@ -655,6 +659,10 @@ rtems_rtl_rap_file_load (rtems_rtl_obj_t* obj, int fd)
    * uint32_t: class
    */
 
+  if (rtems_rtl_trace (RTEMS_RTL_TRACE_LOAD))
+    printf ("rtl: rap: input machine=%lu\n",
+            rtems_rtl_obj_comp_input (rap.decomp));
+
   if (!rtems_rtl_rap_read_uint32 (rap.decomp, &rap.machinetype))
     return false;
 
@@ -699,6 +707,10 @@ rtems_rtl_rap_file_load (rtems_rtl_obj_t* obj, int fd)
    * uint32_t: relocs_size
    */
 
+  if (rtems_rtl_trace (RTEMS_RTL_TRACE_LOAD))
+    printf ("rtl: rap: input header=%lu\n",
+            rtems_rtl_obj_comp_input (rap.decomp));
+
   if (!rtems_rtl_rap_read_uint32 (rap.decomp, &rap.init))
     return false;
 
@@ -715,6 +727,11 @@ rtems_rtl_rap_file_load (rtems_rtl_obj_t* obj, int fd)
     return false;
 
   rap.symbols = rap.symtab_size / (3 * sizeof (uint32_t));
+
+  if (rtems_rtl_trace (RTEMS_RTL_TRACE_LOAD))
+    printf ("rtl: rap: load: symtab=%lu (%lu) strtab=%lu relocs=%lu\n",
+            rap.symtab_size, rap.symbols,
+            rap.strtab_size, rap.relocs_size);
 
   /*
    * uint32_t: text_size
@@ -761,8 +778,16 @@ rtems_rtl_rap_file_load (rtems_rtl_obj_t* obj, int fd)
   if (!rtems_rtl_obj_load_sections (obj, fd, rtems_rtl_rap_loader, &rap))
     return false;
 
+  if (rtems_rtl_trace (RTEMS_RTL_TRACE_LOAD))
+    printf ("rtl: rap: input symbols=%lu\n",
+            rtems_rtl_obj_comp_input (rap.decomp));
+
   if (!rtems_rtl_rap_load_symbols (&rap, obj))
     return false;
+
+  if (rtems_rtl_trace (RTEMS_RTL_TRACE_LOAD))
+    printf ("rtl: rap: input relocs=%lu\n",
+            rtems_rtl_obj_comp_input (rap.decomp));
 
   if (!rtems_rtl_rap_relocate (&rap, obj))
     return false;
