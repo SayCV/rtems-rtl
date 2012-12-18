@@ -53,7 +53,16 @@ typedef struct rtems_rtl_obj_cpmp_s
   size_t                 size;        /**< The size of the output buffer. */
   size_t                 level;       /**< The amount of data in the buffer. */
   uint8_t*               buffer;      /**< The buffer */
+  uint32_t               read;        /**< The amount of data read. */
 } rtems_rtl_obj_comp_t;
+
+/**
+ * Return the input level.
+ */
+static inline uint32_t rtems_rtl_obj_comp_input (rtems_rtl_obj_comp_t* comp)
+{
+  return comp->read;
+}
 
 /**
  * Open a compressor allocating the output buffer.

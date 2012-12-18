@@ -46,6 +46,7 @@ rtems_rtl_obj_comp_open (rtems_rtl_obj_comp_t*  comp,
     rtems_rtl_set_error (ENOMEM, "no memory for compressor buffer");
     return false;
   }
+  comp->read = 0;
   return true;
 }
 
@@ -59,6 +60,7 @@ rtems_rtl_obj_comp_close (rtems_rtl_obj_comp_t* comp)
   comp->level = 0;
   comp->size = 0;
   comp->offset = 0;
+  comp->read = 0;
 }
 
 void
@@ -73,6 +75,7 @@ rtems_rtl_obj_comp_set (rtems_rtl_obj_comp_t*  comp,
   comp->compression = compression;
   comp->offset = offset;
   comp->level = 0;
+  comp->read = 0;
 }
 
 bool
@@ -80,6 +83,8 @@ rtems_rtl_obj_comp_read (rtems_rtl_obj_comp_t* comp,
                          void*                 buffer,
                          size_t                length)
 {
+  uint8_t* bin = buffer;
+
   if (!comp->cache)
   {
     rtems_rtl_set_error (EINVAL, "not open");
@@ -99,7 +104,7 @@ rtems_rtl_obj_comp_read (rtems_rtl_obj_comp_t* comp,
 
     if (buffer_level)
     {
-      memcpy (buffer, comp->buffer, buffer_level);
+      memcpy (bin, comp->buffer, buffer_level);
 
       if ((comp->level - buffer_level) != 0)
       {
@@ -108,8 +113,10 @@ rtems_rtl_obj_comp_read (rtems_rtl_obj_comp_t* comp,
                  comp->level - buffer_level);
       }
 
+      bin += buffer_level;
       length -= buffer_level;
       comp->level -= buffer_level;
+      comp->read += buffer_level;
     }
 
     if (length)
@@ -135,7 +142,8 @@ rtems_rtl_obj_comp_read (rtems_rtl_obj_comp_t* comp,
 
       if (in_length != block_size)
       {
-        rtems_rtl_set_error (EIO, "compressed read failed");
+        rtems_rtl_set_error (EIO, "compressed read failed: bs=%u in=%u",
+                             block_size, in_length);
         return false;
       }
 
@@ -155,6 +163,7 @@ rtems_rtl_obj_comp_read (rtems_rtl_obj_comp_t* comp,
             return false;
           }
           break;
+
         default:
           rtems_rtl_set_error (EINVAL, "bad compression type");
           return false;
