@@ -29,11 +29,12 @@
 bool
 rtems_rtl_obj_cache_open (rtems_rtl_obj_cache_t* cache, size_t size)
 {
-  cache->fd     = -1;
-  cache->offset = 0;
-  cache->size   = size;
-  cache->level  = 0;
-  cache->buffer = rtems_rtl_alloc_new (RTEMS_RTL_ALLOC_OBJECT, size, false);
+  cache->fd        = -1;
+  cache->file_size = 0;
+  cache->offset    = 0;
+  cache->size      = size;
+  cache->level     = 0;
+  cache->buffer    = rtems_rtl_alloc_new (RTEMS_RTL_ALLOC_OBJECT, size, false);
   if (!cache->buffer)
   {
     rtems_rtl_set_error (ENOMEM, "no memory for cache buffer");
@@ -46,15 +47,17 @@ void
 rtems_rtl_obj_cache_close (rtems_rtl_obj_cache_t* cache)
 {
   rtems_rtl_alloc_del (RTEMS_RTL_ALLOC_OBJECT, cache->buffer);
-  cache->fd    = -1;
-  cache->level = 0;
+  cache->fd        = -1;
+  cache->file_size = 0;
+  cache->level     = 0;
 }
 
 void
 rtems_rtl_obj_cache_flush (rtems_rtl_obj_cache_t* cache)
 {
-  cache->fd    = -1;
-  cache->level = 0;
+  cache->fd        = -1;
+  cache->file_size = -1;
+  cache->level     = 0;
 }
 
 bool
@@ -64,17 +67,29 @@ rtems_rtl_obj_cache_read (rtems_rtl_obj_cache_t* cache,
                           void**                 buffer,
                           size_t*                length)
 {
+  struct stat sb;
+
   if (*length > cache->size)
   {
     rtems_rtl_set_error (EINVAL, "read size larger than cache size");
     return false;
   }
 
+  if (offset > cache->file_size)
+  {
+    rtems_rtl_set_error (EINVAL, "offset past end of file: offset=%i size=%i",
+                         (int) offset, (int) cache->file_size);
+    return false;
+  }
+
+  if ((offset + *length) > cache->file_size)
+    *length = cache->file_size - offset;
+
   while (true)
   {
     size_t buffer_offset = 0;
     size_t buffer_read = cache->size;
-    
+
     /*
      * Is the data in the cache for this file ?
      */
@@ -87,23 +102,17 @@ rtems_rtl_obj_cache_read (rtems_rtl_obj_cache_t* cache,
           (offset < (cache->offset + cache->level)))
       {
         buffer_offset = offset - cache->offset;
-      
+
         /*
          * Return the location of the data in the cache.
          */
         *buffer = cache->buffer + buffer_offset;
-        
+
         /*
          * Is all the data in the cache or just a part ?
          */
-        if (*length < (cache->level - buffer_offset))
-          return true;
-        else if (cache->level < cache->size)
+        if (*length <= (cache->level - buffer_offset))
         {
-          /*
-           * This is the remaining data in the file.
-           */
-          *length = cache->level - buffer_offset;
           return true;
         }
 
@@ -154,6 +163,14 @@ rtems_rtl_obj_cache_read (rtems_rtl_obj_cache_t* cache,
 
     cache->fd = fd;
     cache->offset = offset;
+
+    if (fstat (cache->fd, &sb) < 0)
+    {
+      rtems_rtl_set_error (errno, "file stat failed");
+      return false;
+    }
+
+    cache->file_size = sb.st_size;
   }
 
   return false;

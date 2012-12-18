@@ -53,6 +53,7 @@ extern "C" {
 typedef struct rtems_rtl_obj_cache_s
 {
   int      fd;        /**< The file descriptor of the data in the cache. */
+  size_t   file_size; /**< The size of the file. */
   off_t    offset;    /**< The base offset of the buffer. */
   size_t   size;      /**< The size of the cache. */
   size_t   level;     /**< The amount of data in the cache. A file can be
