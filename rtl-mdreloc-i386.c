@@ -57,9 +57,9 @@ rtems_rtl_elf_relocate_rel (const rtems_rtl_obj_t*      obj,
       *where += target - (Elf_Addr)where;
 
       if (rtems_rtl_trace (RTEMS_RTL_TRACE_RELOC))
-        printf ("rtl: reloc PC32 in %s --> %p (%p) in %s\n",
+        printf ("rtl: reloc PC32 in %s --> %p (%p @ %p) in %s\n",
                 sect->name, (void*) symvalue,
-                (void *)*where, rtems_rtl_obj_oname (obj));
+                (void *)*where, where, rtems_rtl_obj_oname (obj));
       break;
 
     case R_TYPE(GOT32):
@@ -71,16 +71,16 @@ rtems_rtl_elf_relocate_rel (const rtems_rtl_obj_t*      obj,
       if (*where != tmp)
         *where = tmp;
       if (rtems_rtl_trace (RTEMS_RTL_TRACE_RELOC))
-        printf ("rtl: reloc 32/GLOB_DAT in %s --> %p in %s\n",
-                sect->name, (void *)*where,
+        printf ("rtl: reloc 32/GLOB_DAT in %s --> %p @ %p in %s\n",
+                sect->name, (void *)*where, where,
                 rtems_rtl_obj_oname (obj));
       break;
 
     case R_TYPE(RELATIVE):
       *where += (Elf_Addr)sect->base;
       if (rtems_rtl_trace (RTEMS_RTL_TRACE_RELOC))
-        printf ("rtl: reloc RELATIVE in %s --> %p\n",
-                rtems_rtl_obj_oname (obj), (void *)*where);
+        printf ("rtl: reloc RELATIVE in %s --> %p @ %p\n",
+                rtems_rtl_obj_oname (obj), (void *)*where, where);
       break;
 
     case R_TYPE(COPY):
