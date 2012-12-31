@@ -354,8 +354,8 @@ rtems_rtl_rap_relocate (rtems_rtl_rap_t* rap, rtems_rtl_obj_t* obj)
 
         if (!symbol)
         {
-          free (symname_buffer);
           rtems_rtl_set_error (EINVAL, "global symbol not found: %s", symname);
+          free (symname_buffer);
           return false;
         }
 
