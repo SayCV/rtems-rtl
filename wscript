@@ -138,7 +138,6 @@ def build(bld):
     # finally the second link occurs with the global symbol table to create the
     # executable to install.
     #
-    #
     # Create the root file system for the prelink.
     #
     bld(target = 'fs-root.tar',
@@ -179,15 +178,20 @@ def build(bld):
         source = ['xa.c',
                   'x-long-name-to-create-gnu-extension-in-archive.c'])
 
+    if re.match('pc[3456]86', bsp) is not None:
+        raps = ['bsdport.rap']
+    else:
+        raps = []
+
     bld(target = 'fs-root.tar',
-        source = ['shell-init', 'libx.a', 'x.rap'],
+        name = 'fs',
+        source = ['shell-init', 'libx.a', 'x.rap'] + raps,
         rule = 'tar cf - ${SRC} > ${TGT}')
     bld.objects(name = 'rootfs',
                 target = 'fs-root-tarfile.o',
                 source = 'fs-root.tar',
+                depends_on = 'fs',
                 rule = '${OBJCOPY} -I binary -B ${RTEMS_ARCH} ${OBJCOPY_FLAGS} ${SRC} ${TGT}')
-
-    bld.add_group ()
 
     bld(features = 'c cprogram',
         target = 'rtld',
