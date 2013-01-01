@@ -145,16 +145,34 @@ rtems_rtl_delta_voids (void* higher, void* lower)
 }
 
 /**
+ * Parse an argument.
+ */
+static bool
+rtems_rtl_parse_arg (const char* opt, int argc, char *argv[])
+{
+  int arg;
+  for (arg = 0; arg < argc; ++arg)
+    if (strncmp (opt, argv[arg], 2) == 0)
+      return true;
+  return false;
+}
+
+/**
  * See if -b for base is set.
  */
 static bool
 rtems_rtl_base_arg (int argc, char *argv[])
 {
-  int arg;
-  for (arg = 0; arg < argc; ++arg)
-    if (strncmp ("-b", argv[arg], 2) == 0)
-      return true;
-  return false;
+  return rtems_rtl_parse_arg ("-b", argc, argv);
+}
+
+/**
+ * See if -s for base is set.
+ */
+static bool
+rtems_rtl_symbols_arg (int argc, char *argv[])
+{
+  return rtems_rtl_parse_arg ("-s", argc, argv);
 }
 
 /**
@@ -257,7 +275,7 @@ rtems_rtl_shell_list (rtems_rtl_data_t* rtl, int argc, char *argv[])
   print.oname = true;
   print.names = true;
   print.memory_map = true;
-  print.symbols = true;
+  print.symbols = rtems_rtl_symbols_arg (argc, argv);
   print.base = false;
   rtems_rtl_chain_iterate (&rtl->objects,
                            rtems_rtl_obj_print_iterator,
@@ -269,9 +287,6 @@ static int
 rtems_rtl_shell_sym (rtems_rtl_data_t* rtl, int argc, char *argv[])
 {
   rtems_rtl_obj_print_t print;
-
-
-
   print.rtl = rtl;
   print.indent = 1;
   print.oname = true;
