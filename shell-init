@@ -1,4 +1,11 @@
 #rtl-trace set all
-#rtl-trace set load load-sect symbol reloc unresolved
+#rtl-trace set load load-sect symbol reloc #unresolved
 #dlo libx.a:xa.c.1.o
 #dlo libx.a:x-long-name-to-create-gnu-extension-in-archive.c.1.o
+#dlo x.rap
+
+#mkdir c
+#mount -t dosfs /dev/hda1 /c
+#dlo c/bsdport.rap
+
+dlo bsdport.rap
