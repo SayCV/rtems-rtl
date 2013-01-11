@@ -92,6 +92,7 @@ def build(bld):
                   'rtl-debugger.c',
                   'rtl-elf.c',
                   'rtl-error.c',
+                  'rtl-find-file.c',
                   'rtl-obj.c',
                   'rtl-obj-cache.c',
                   'rtl-obj-comp.c',

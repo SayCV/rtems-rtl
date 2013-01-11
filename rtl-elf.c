@@ -39,6 +39,15 @@
 #define REL_R_INFO   (1)
 #define REL_R_ADDEND (2)
 
+/**
+ * The ELF format signature.
+ */
+static rtems_rtl_loader_format_t elf_sig =
+{
+  .label = "ELF",
+  .flags = RTEMS_RTL_FMT_ELF
+};
+
 static bool
 rtems_rtl_elf_machine_check (Elf_Ehdr* ehdr)
 {
@@ -761,3 +770,8 @@ rtems_rtl_elf_file_load (rtems_rtl_obj_t* obj, int fd)
   return true;
 }
 
+rtems_rtl_loader_format_t*
+rtems_rtl_elf_file_sig (void)
+{
+  return &elf_sig;
+}

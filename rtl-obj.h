@@ -13,8 +13,8 @@
  * @brief RTEMS Run-Time Linker Object Support.
  */
 
-#if !defined (_RTEMS_RTL_MAP_H_)
-#define _RTEMS_RTL_MAP_H_
+#if !defined (_RTEMS_RTL_OBJ_H_)
+#define _RTEMS_RTL_OBJ_H_
 
 #include <rtems.h>
 #include <rtems/chain.h>
@@ -26,24 +26,55 @@ extern "C" {
 #endif /* __cplusplus */
 
 /**
+ * Loader format flags.
+ */
+#define RTEMS_RTL_FMT_ELF     (1 << 0)
+#define RTEMS_RTL_FMT_COMP    (1 << 1)
+#define RTEMS_RTL_FMT_PRIVATE (1 << 16)
+
+/**
+ * Loader format definition.
+ */
+typedef struct rtems_rtl_loader_format_s
+{
+  /**
+   * The format label. This can be used to determine and manage
+   * specific formats.
+   */
+  const char* label;
+
+  /**
+   * The format flags.
+   */
+  uint32_t flags;
+} rtems_rtl_loader_format_t;
+
+/**
  * The type of the format loader check handler. This handler checks the format
  * and if it is detected as suitable it returns true.
  */
-typedef bool (*rtems_rtl_loader_check)(rtems_rtl_obj_t* obj, int fd);
+typedef bool (*rtems_rtl_loader_check) (rtems_rtl_obj_t* obj, int fd);
 
 /**
  * The type of the format loader handler. This handler loads the specific
  * format.
  */
-typedef bool (*rtems_rtl_loader_load)(rtems_rtl_obj_t* obj, int fd);
+typedef bool (*rtems_rtl_loader_load) (rtems_rtl_obj_t* obj, int fd);
+
+/**
+ * The type of the format loader handler. This handler loads the specific
+ * format.
+ */
+typedef rtems_rtl_loader_format_t* (*rtems_rtl_loader_sig) (void);
 
 /**
  * Table for supported loadable formats.
  */
 typedef struct rtems_rtl_loader_table_s
 {
-  rtems_rtl_loader_check check; /**< The check handler. */
-  rtems_rtl_loader_load  load;  /**< The loader. */
+  rtems_rtl_loader_check check;     /**< The check handler. */
+  rtems_rtl_loader_load  load;      /**< The loader. */
+  rtems_rtl_loader_sig   signature; /**< The loader's signature. */
 } rtems_rtl_loader_table_t;
 
 /**

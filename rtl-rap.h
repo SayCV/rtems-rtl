@@ -40,6 +40,13 @@ bool rtems_rtl_rap_file_check (rtems_rtl_obj_t* obj, int fd);
  */
 bool rtems_rtl_rap_file_load (rtems_rtl_obj_t* obj, int fd);
 
+/**
+ * The RAP format signature handler.
+ *
+ * @return rtems_rtl_loader_format_t* The format's signature.
+ */
+rtems_rtl_loader_format_t* rtems_rtl_rap_file_sig (void);
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

@@ -18,11 +18,9 @@
 #endif
 
 #include <errno.h>
-#include <fcntl.h>
 #include <inttypes.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <unistd.h>
 
 #include <rtems/libio_.h>
 
@@ -30,12 +28,9 @@
 #include <rtl-chain-iterator.h>
 #include <rtl-obj.h>
 #include "rtl-error.h"
+#include "rtl-find-file.h"
 #include "rtl-string.h"
 #include "rtl-trace.h"
-
-#if WAF_BUILD
-#define rtems_filesystem_is_delimiter rtems_filesystem_is_separator
-#endif
 
 #if RTEMS_RTL_RAP_LOADER
 #include "rtl-rap.h"
@@ -58,10 +53,10 @@ static rtems_rtl_loader_table_t loaders[RTEMS_RTL_ELF_LOADER_COUNT +
                                         RTEMS_RTL_RAP_LOADER_COUNT] =
 {
 #if RTEMS_RTL_RAP_LOADER
-  { rtems_rtl_rap_file_check, rtems_rtl_rap_file_load },
+  { rtems_rtl_rap_file_check, rtems_rtl_rap_file_load, rtems_rtl_rap_file_sig },
 #endif
 #if RTEMS_RTL_ELF_LOADER
-  { rtems_rtl_elf_file_check, rtems_rtl_elf_file_load },
+  { rtems_rtl_elf_file_check, rtems_rtl_elf_file_load, rtems_rtl_elf_file_sig },
 #endif
 };
 
@@ -346,8 +341,8 @@ rtems_rtl_match_name (rtems_rtl_obj_t* obj, const char* name)
 bool
 rtems_rtl_obj_find_file (rtems_rtl_obj_t* obj, const char* name)
 {
-  struct stat sb;
-  const char* pname;
+  const char*       pname;
+  rtems_rtl_data_t* rtl;
 
   /*
    * Parse the name. The object descriptor will have the archive name and/or
@@ -369,73 +364,12 @@ rtems_rtl_obj_find_file (rtems_rtl_obj_t* obj, const char* name)
   else
     pname = rtems_rtl_obj_oname (obj);
 
-  if (rtems_filesystem_is_delimiter (pname[0]))
-  {
-    if (stat (pname, &sb) == 0)
-      obj->fname = rtems_rtl_strdup (pname);
-  }
-  else
-  {
-    rtems_rtl_data_t* rtl;
-    const char*       start;
-    const char*       end;
-    int               len;
-    char*             fname;
+  rtl = rtems_rtl_lock ();
 
-    rtl = rtems_rtl_lock ();
-
-    start = rtl->paths;
-    end = start + strlen (rtl->paths);
-    len = strlen (pname);
-
-    while (!obj->fname && (start != end))
-    {
-      const char* delimiter = strchr (start, ':');
-
-      if (delimiter == NULL)
-        delimiter = end;
-
-      /*
-       * Allocate the path fragment, separator, name, terminating nul. Form the
-       * path then see if the stat call works.
-       */
-
-      fname = rtems_rtl_alloc_new (RTEMS_RTL_ALLOC_OBJECT,
-                                   (delimiter - start) + 1 + len + 1, true);
-      if (!fname)
-      {
-        rtems_rtl_set_error (ENOMEM, "no memory searching for object file");
-        rtems_rtl_unlock ();
-        return false;
-      }
-
-      memcpy (fname, start, delimiter - start);
-      fname[delimiter - start] = '/';
-      memcpy (fname + (delimiter - start) + 1, pname, len);
-
-      if (rtems_rtl_trace (RTEMS_RTL_TRACE_LOAD))
-        printf ("rtl: loading: find-path: %s\n", fname);
-
-      if (stat (fname, &sb) < 0)
-        rtems_rtl_alloc_del (RTEMS_RTL_ALLOC_OBJECT, fname);
-      else
-        obj->fname = fname;
-
-      start = delimiter;
-      if (start != end)
-        ++start;
-    }
-
-    rtems_rtl_unlock ();
-  }
-
-  if (!obj->fname)
-  {
-    rtems_rtl_set_error (ENOMEM, "object file not found");
+  if (!rtems_rtl_find_file (pname, rtl->paths, &obj->fname, &obj->fsize))
     return false;
-  }
 
-  obj->fsize = sb.st_size;
+  rtems_rtl_unlock ();
 
   return true;
 }

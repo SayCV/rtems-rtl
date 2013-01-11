@@ -1,5 +1,5 @@
 /*
- *  COPYRIGHT (c) 2012 Chris Johns <chrisj@rtems.org>
+ *  COPYRIGHT (c) 2012-2013 Chris Johns <chrisj@rtems.org>
  *
  *  The license and distribution terms for this file may be
  *  found in the file LICENSE in this distribution or at
@@ -40,6 +40,15 @@
 #define REL_R_OFFSET (0)
 #define REL_R_INFO   (1)
 #define REL_R_ADDEND (2)
+
+/**
+ * The ELF format signature.
+ */
+static rtems_rtl_loader_format_t rap_sig =
+{
+  .label = "RAP",
+  .flags = RTEMS_RTL_FMT_COMP
+};
 
 /**
  * The section definitions found in a RAP file.
@@ -793,4 +802,10 @@ rtems_rtl_rap_file_load (rtems_rtl_obj_t* obj, int fd)
     return false;
 
   return true;
+}
+
+rtems_rtl_loader_format_t*
+rtems_rtl_rap_file_sig (void)
+{
+  return &rap_sig;
 }
