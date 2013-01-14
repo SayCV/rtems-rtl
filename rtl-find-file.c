@@ -47,12 +47,12 @@ rtems_rtl_find_file (const char*  name,
   *file_name = NULL;
   *size = 0;
 
-  if (rtems_filesystem_is_delimiter (name[0]))
+  if (rtems_filesystem_is_delimiter (name[0]) || (name[0] == '.'))
   {
     if (stat (name, &sb) == 0)
       *file_name = rtems_rtl_strdup (name);
   }
-  else
+  else if (paths)
   {
     const char* start;
     const char* end;
@@ -102,10 +102,7 @@ rtems_rtl_find_file (const char*  name,
   }
 
   if (!*file_name)
-  {
-    rtems_rtl_set_error (ENOMEM, "file not found");
     return false;
-  }
 
   *size = sb.st_size;
 

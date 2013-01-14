@@ -47,6 +47,7 @@
 int remote_debug;
 #endif
 
+#include <rap-shell.h>
 #include <rtl-shell.h>
 #include <rtl-trace.h>
 
@@ -429,6 +430,8 @@ main (int argc, char* argv[])
                        "fderase driver", shell_flash_erase);
   rtems_shell_add_cmd ("rtl", "misc",
                        "Runtime Linker", rtems_rtl_shell_command);
+  rtems_shell_add_cmd ("rap", "misc",
+                       "Application loader", shell_rap);
   rtems_shell_add_cmd ("dlo", "misc",
                        "load object file", shell_dlopen);
   rtems_shell_add_cmd ("dlc", "misc",

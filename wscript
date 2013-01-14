@@ -85,6 +85,8 @@ def build(bld):
         source = ['dlfcn.c',
                   'dlfcn-shell.c',
                   'fastlz.c',
+                  'rap.c',
+                  'rap-shell.c',
                   'rtl.c',
                   'rtl-alloc-heap.c',
                   'rtl-allocator.c',

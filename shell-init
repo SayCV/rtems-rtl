@@ -7,5 +7,4 @@
 #mkdir c
 #mount -t dosfs /dev/hda1 /c
 #dlo c/bsdport.rap
-
-dlo bsdport.rap
+#dlo bsdport.rap
