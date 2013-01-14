@@ -440,7 +440,7 @@ rtems_rtl_load_object (const char* name, int mode)
   ++obj->users;
 
   /*
-   * FIXME: Resolving exsiting unresolved symbols could add more constructors
+   * FIXME: Resolving existing unresolved symbols could add more constructors
    *        lists that need to be called. Make a list in the obj load layer and
    *        invoke the list here.
    */

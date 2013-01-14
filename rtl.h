@@ -251,7 +251,9 @@ void rtems_rtl_run_ctors (rtems_rtl_obj_t* obj);
 
 /**
  * Get the last error message clearing it. This operation locks the run time
- * linker and therefore keeps the RTL thread safe.
+ * linker and therefore keeps the RTL thread safe but this call is not thread
+ * safe is multiple threads are loading object files at the same time. This
+ * call is provided to map to the dlopen family of calls.
  *
  * @param message Pointer to a buffer to copy the message into.
  * @param max_message The maximum message that can be copied.
