@@ -8,3 +8,6 @@
 #mount -t dosfs /dev/hda1 /c
 #dlo c/bsdport.rap
 #dlo bsdport.rap
+
+rap ld ./bsdport.rap
+rap ls
