@@ -68,7 +68,7 @@ BEGIN {
   {
     if (ARGV[a] == "--no-embed")
     {
-      embed = 1
+      embed = 0
       delete ARGV[a];
     }
     else if (ARGV[a] != "-")
