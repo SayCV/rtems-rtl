@@ -377,7 +377,10 @@ rtems_rtl_rap_relocate (rtems_rtl_rap_t* rap, rtems_rtl_obj_t* obj)
 
         rela.r_offset = offset;
         rela.r_info = type;
-        rela.r_addend = addend;
+
+        if ((info & (1 << 31)) == 0)
+          rela.r_addend = 0;
+        else rela.r_addend = addend;
 
         if (rtems_rtl_trace (RTEMS_RTL_TRACE_RELOC))
           printf (" %2d: rela: type:%-2d off:%lu addend:%d" \
