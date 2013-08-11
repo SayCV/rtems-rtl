@@ -12,7 +12,7 @@ import subprocess
 default_version = '4.11'
 default_label = 'rtems-' + default_version
 default_path = '/opt/' + default_label
-default_postfix = 'rtems' + default_version
+default_postfix = 'rtemseabi' + default_version
 
 rtems_filters = None
 
@@ -416,7 +416,7 @@ def _find_installed_arch_bsps(config, path, archs, version):
     else:
         ab = subprocess.check_output([config, '--list-format'])
         ab = ab[:-1].replace('"', '')
-        ab = ab.replace('/', '-rtems%s-' % (version))
+        ab = ab.replace('/', '-rtemseabi%s-' % (version))
         arch_bsps = [x for x in set(ab.split())]
     arch_bsps.sort()
     return arch_bsps
@@ -429,7 +429,7 @@ def _check_arch_bsps(req, config, path, archs, version):
             return []
         found = False
         for arch in archs:
-            a = '%s-rtems%s' % (abl[0], version)
+            a = '%s-rtemseabi%s' % (abl[0], version)
             if a == arch:
                 found = True
                 break
@@ -511,7 +511,7 @@ USELIB_VARS['rap'] = set(['RTEMS_LINKFLAGS'])
 @TaskGen.extension('.c')
 class rap(link_task):
         "Link object files into a RTEMS applicatoin"
-        run_str = '${RTEMS_LD} ${RTEMS_LINKFLAGS} --cc ${CC} ${SRC} -o ${TGT[0].abspath()} ${STLIB_MARKER} ${STLIBPATH_ST:STLIBPATH} ${STLIB_ST:STLIB} ${LIBPATH_ST:LIBPATH} ${LIB_ST:LIB}'
+        run_str = '${RTEMS_LD} -v -w ${RTEMS_LINKFLAGS} --cc ${CC} -v ${SRC} -o ${TGT[0].abspath()} ${STLIB_MARKER} ${STLIBPATH_ST:STLIBPATH} ${STLIB_ST:STLIB} ${LIBPATH_ST:LIBPATH} ${LIB_ST:LIB}'
         ext_out = ['.rap']
         vars    = ['RTEMS_LINKFLAGS', 'LINKDEPS']
         inst_to = '${BINDIR}'
