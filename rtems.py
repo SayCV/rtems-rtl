@@ -386,13 +386,13 @@ def _find_installed_archs(config, path, version):
     archs = []
     if config is None:
         for d in os.listdir(path):
-            if d.endswith('-rtems' + version):
+            if d.endswith('-rtemseabi' + version):
                 archs += [d]
     else:
         a = subprocess.check_output([config, '--list-format', '"%(arch)s"'])
         a = a[:-1].replace('"', '')
         archs = set(a.split())
-        archs = ['%s-rtems4.11' % (x) for x in archs]
+        archs = ['%s-rtemseabi4.11' % (x) for x in archs]
     archs.sort()
     return archs
 
@@ -400,7 +400,7 @@ def _check_archs(config, req, path, version):
     installed = _find_installed_archs(config, path, version)
     archs = []
     for a in req.split(','):
-        arch = a + '-rtems' + version
+        arch = a + '-rtemseabi' + version
         if arch in installed:
             archs += [arch]
     archs.sort()
